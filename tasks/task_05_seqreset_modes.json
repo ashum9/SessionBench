@@ -1,0 +1,52 @@
+{
+  "task_id": "T05",
+  "filename": "task_05_seqreset_modes.json",
+  "ref_filename": "ref_05.json",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "title": "SequenceReset Mode Transitions & Subsequent Liveness Check",
+  "description": "An active session at NextSenderMsgSeqNum=8 and NextTargetMsgSeqNum=15 receives two SequenceReset (35=4) messages at t=1000ms and t=2000ms, followed by an inbound TestRequest (35=1) at t=3000ms.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 8,
+    "next_target_seq_num": 15,
+    "last_sent_time_ms": 0,
+    "last_recv_time_ms": 0,
+    "outbound_messages_store": []
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 1000,
+      "msg_type": "4",
+      "msg_seq_num": 15,
+      "gap_fill_flag": true,
+      "new_seq_no": 12,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 900,
+      "send_time_ms": 1000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2000,
+      "msg_type": "4",
+      "msg_seq_num": 1,
+      "gap_fill_flag": false,
+      "new_seq_no": 25,
+      "poss_dup_flag": false,
+      "send_time_ms": 2000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 3000,
+      "msg_type": "1",
+      "msg_seq_num": 25,
+      "test_req_id": "PING-1",
+      "send_time_ms": 3000
+    }
+  ]
+}

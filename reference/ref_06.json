@@ -1,0 +1,47 @@
+{
+  "task_id": "T06",
+  "rules_tested": [
+    "R1: Session Reject (35=3) is an Administrative Message and must NEVER be resent verbatim",
+    "R2: Contiguous Admin Messages (35=3 at seq 11 and 35=0 at seq 12) coalesce into a single GapFill (34=11, 36=13)",
+    "R13: Open-Ended ResendRequest (EndSeqNo 16=0) resolves upper bound to NextSenderMsgSeqNum - 1"
+  ],
+  "expert_rationale": "EndSeqNo=0 replays 10..14. Stored msg 11 is a SessionReject (35=3), which is an admin message and must coalesce with msg 12 (35=0) into GapFill (34=11, 36=13), followed by order 13 and GapFill (34=14, 36=15).",
+  "outbound_messages": [
+    {
+      "msg_type": "D",
+      "msg_seq_num": 10,
+      "poss_dup_flag": true,
+      "send_time_ms": 4000,
+      "cl_ord_id": "ORD-10"
+    },
+    {
+      "msg_type": "4",
+      "msg_seq_num": 11,
+      "poss_dup_flag": true,
+      "gap_fill_flag": true,
+      "new_seq_no": 13,
+      "send_time_ms": 4000
+    },
+    {
+      "msg_type": "D",
+      "msg_seq_num": 13,
+      "poss_dup_flag": true,
+      "send_time_ms": 4000,
+      "cl_ord_id": "ORD-13"
+    },
+    {
+      "msg_type": "4",
+      "msg_seq_num": 14,
+      "poss_dup_flag": true,
+      "gap_fill_flag": true,
+      "new_seq_no": 15,
+      "send_time_ms": 4000
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 15,
+    "next_target_seq_num": 11,
+    "disconnect_time_ms": null
+  }
+}

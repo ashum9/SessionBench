@@ -1,0 +1,95 @@
+{
+  "model": "gemini-flash-lite-latest",
+  "condition": "with_python_tool",
+  "task_id": "T07",
+  "level": 3,
+  "interacting_rules_count": 4,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T07\",\n  \"title\": \"Concurrent Bidirectional Sequence Gaps & Recovery\",\n  \"description\": \"An active session with send_redundant_resend_requests=False, NextSenderMsgSeqNum=12, and NextTargetMsgSeqNum=20 receives an inbound order (34=22) at t=1000ms, an inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11) at t=1500ms, and an inbound SequenceReset (34=20, NewSeqNo=22) at t=2000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 12,\n    \"next_target_seq_num\": 20,\n    \"last_sent_time_ms\": 500,\n    \"last_recv_time_ms\": 500,\n    \"outbound_messages_store\": [\n      {\n        \"msg_seq_num\": 10,\n        \"msg_type\": \"0\",\n        \"send_time_ms\": 200\n      },\n      {\n        \"msg_seq_num\": 11,\n        \"msg_type\": \"D\",\n        \"cl_ord_id\": \"ORD-11\",\n        \"send_time_ms\": 400\n      }\n    ]\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 22,\n      \"send_time_ms\": 1000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1500,\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 23,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11,\n      \"send_time_ms\": 1500\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2000,\n      \"msg_type\": \"4\",\n      \"msg_seq_num\": 20,\n      \"gap_fill_flag\": true,\n      \"new_seq_no\": 22,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": 1800,\n      \"send_time_ms\": 2000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:42:37.463241+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\n# Let's run a python script to simulate this trace accurately.\nimport json\n\ndef simulate():\n    # Initial state\n    sender_seq = 12\n    target_seq = 20\n    \n    outbound = []\n    \n    # Event 1: RECV_MSG D (34=22) at t=1000ms\n    # Target is 20, received 22 -> Gap detected (expected 20, got 22).\n    # Since target_seq=20 and received=22, we need a ResendRequest (msg_type=2) for BeginSeqNo=20, EndSeqNo=0 (or 21/max).\n    # Wait, let's verify standard FIX behavior for gap. Expected 20, got 22.\n    # Outbound ResendRequest: BeginSeqNo=20, EndSeqNo=0 (or EndSeqNo=21/infinity). In our schema, msg_type=\"2\" has begin_seq_no and end_seq_no.\n    # Let's check what FinGate Session Shield does when gap detected: sends ResendRequest for missing messages.\n    pass\n\nprint(\"Python execution check\")\n```\n\n```python\n# Let's write a complete simulation script to ensure we get all details right.\nclass SessionSimulator:\n    def __init__(self, config, store):\n        self.config = config\n        self.sender_seq = store[\"next_sender_seq_num\"]\n        self.target_seq = store[\"next_target_seq_num\"]\n        self.status = store[\"status\"]\n        self.store = store[\"outbound_messages_store\"]\n        self.outbound = []\n        self.disconnect_time = None\n\n    def add_outbound(self, msg):\n        self.outbound.append(msg)\n        if msg[\"msg_type\"] not in (\"3\",): # Does seq num increment for all? Usually seq num increments for all sent messages except maybe... wait, all standard messages increment sender_seq.\n            pass\n        # Wait, let's check which messages increment sender_seq: 0, 1, 2, 3, 4, 5, A, D, F all increment sender_seq!\n        # Let's check schema: msg_seq_num is assigned.\n\nsim = SessionSimulator(\n    {\n        \"heart_bt_int_ms\": 30000,\n        \"send_redundant_resend_requests\": False\n    },\n    {\n        \"status\": \"ACTIVE\",\n        \"next_sender_seq_num\": 12,\n        \"next_target_seq_num\": 20,\n        \"outbound_messages_store\": [\n            {\"msg_seq_num\": 10, \"msg_type\": \"0\", \"send_time_ms\": 200},\n            {\"msg_seq_num\": 11, \"msg_type\": \"D\", \"cl_ord_id\": \"ORD-11\", \"send_time_ms\": 400}\n        ]\n    }\n)\nprint(\"Simulator initialized\")\n```",
+      "tool_call_python": "# Let's run a python script to simulate this trace accurately.\nimport json\n\ndef simulate():\n    # Initial state\n    sender_seq = 12\n    target_seq = 20\n    \n    outbound = []\n    \n    # Event 1: RECV_MSG D (34=22) at t=1000ms\n    # Target is 20, received 22 -> Gap detected (expected 20, got 22).\n    # Since target_seq=20 and received=22, we need a ResendRequest (msg_type=2) for BeginSeqNo=20, EndSeqNo=0 (or 21/max).\n    # Wait, let's verify standard FIX behavior for gap. Expected 20, got 22.\n    # Outbound ResendRequest: BeginSeqNo=20, EndSeqNo=0 (or EndSeqNo=21/infinity). In our schema, msg_type=\"2\" has begin_seq_no and end_seq_no.\n    # Let's check what FinGate Session Shield does when gap detected: sends ResendRequest for missing messages.\n    pass\n\nprint(\"Python execution check\")",
+      "tool_stdout": "Python execution check",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 56.6,
+      "prompt_tokens": 2709,
+      "completion_tokens": 723,
+      "total_tokens": 3432,
+      "cost_usd": 0.00042
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:42:41.188322+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\n# Let's run a python script to simulate the exact logic and print the output JSON.\nimport json\n\n# Let's outline the events:\n# Initial state:\n# status: ACTIVE\n# next_sender_seq_num: 12\n# next_target_seq_num: 20\n# outbound_messages_store:\n#   10: 0 (TestRequest / Heartbeat / whatever, msg_type=\"0\" here is Heartbeat or TestRequest? wait, msg_type=\"0\" is Heartbeat, let's check store: msg_seq_num=10, msg_type=\"0\", msg_seq_num=11, msg_type=\"D\", cl_ord_id=\"ORD-11\")\n\n# Event 1: t=1000, RECV_MSG 34=22 (D)\n# Expected target: 20. Received: 22.\n# Gap detected! Expected 20, got 22.\n# Since we detected a gap (target 20 vs recv 22), we should queue/send a ResendRequest (msg_type=\"2\") for BeginSeqNo=20, EndSeqNo=0 (or EndSeqNo=infinity/target-1 i.e. 21). Wait, what is EndSeqNo for ResendRequest? In FIX, EndSeqNo=0 or EndSeqNo=999999 means \"to infinity\", but let's see what standard FinGate Session Shield does or what the event trace implies.\n# Wait, let's check event 2: inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11).\n# Let's write a python script to simulate this accurately according to standard FIX / FinGate behavior.\n\n```\n\n```python\n# Let's write a python script to simulate the exact engine behavior and output the json.\n```",
+      "tool_call_python": "# Let's run a python script to simulate the exact logic and print the output JSON.\nimport json\n\n# Let's outline the events:\n# Initial state:\n# status: ACTIVE\n# next_sender_seq_num: 12\n# next_target_seq_num: 20\n# outbound_messages_store:\n#   10: 0 (TestRequest / Heartbeat / whatever, msg_type=\"0\" here is Heartbeat or TestRequest? wait, msg_type=\"0\" is Heartbeat, let's check store: msg_seq_num=10, msg_type=\"0\", msg_seq_num=11, msg_type=\"D\", cl_ord_id=\"ORD-11\")\n\n# Event 1: t=1000, RECV_MSG 34=22 (D)\n# Expected target: 20. Received: 22.\n# Gap detected! Expected 20, got 22.\n# Since we detected a gap (target 20 vs recv 22), we should queue/send a ResendRequest (msg_type=\"2\") for BeginSeqNo=20, EndSeqNo=0 (or EndSeqNo=infinity/target-1 i.e. 21). Wait, what is EndSeqNo for ResendRequest? In FIX, EndSeqNo=0 or EndSeqNo=999999 means \"to infinity\", but let's see what standard FinGate Session Shield does or what the event trace implies.\n# Wait, let's check event 2: inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11).\n# Let's write a python script to simulate this accurately according to standard FIX / FinGate behavior.",
+      "tool_stdout": "",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 3.22,
+      "prompt_tokens": 2833,
+      "completion_tokens": 430,
+      "total_tokens": 3263,
+      "cost_usd": 0.000341
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:42:45.692875+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\n# Let's run a python script to simulate the exact behavior of this scenario according to standard FIX 4.4 / FinGate Session Shield rules.\n\nimport json\n\ntask = {\n  \"task_id\": \"T07\",\n  \"title\": \"Concurrent Bidirectional Sequence Gaps & Recovery\",\n  \"description\": \"An active session with send_redundant_resend_requests=False, NextSenderMsgSeqNum=12, and NextTargetMsgSeqNum=20 receives an inbound order (34=22) at t=1000ms, an inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11) at t=1500ms, and an inbound SequenceReset (34=20, NewSeqNo=22) at t=2000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": False\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 12,\n    \"next_target_seq_num\": 20,\n    \"last_sent_time_ms\": 500,\n    \"last_recv_time_ms\": 500,\n    \"outbound_messages_store\": [\n      {\n        \"msg_seq_num\": 10,\n        \"msg_type\": \"0\",\n        \"send_time_ms\": 200\n      },\n      {\n        \"msg_seq_num\": 11,\n        \"msg_type\": \"D\",\n        \"cl_ord_id\": \"ORD-11\",\n        \"send_time_ms\": 400\n      }\n    ]\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 22,\n      \"send_time_ms\": 1000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1500,\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 23,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11,\n      \"send_time_ms\": 1500\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2000,\n      \"msg_type\": \"4\",\n      \"msg_seq_num\": 20,\n      \"gap_fill_flag\": True,\n      \"new_seq_no\": 22,\n      \"poss_dup_flag\": True,\n      \"orig_sending_time_ms\": 1800,\n      \"send_time_ms\": 2000\n    }\n  ]\n}\n\nprint(\"Python simulation environment ready.\")\n```\n\n```python\n# Let's write a python simulation to process the events and print out the exact outbound messages and final state.\n\nstate = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 12,\n    \"next_target_seq_num\": 20,\n}\n\noutbound_messages = []\nstore_msgs = {10: {\"msg_type\": \"0\", \"send_time_ms\": 200}, 11: {\"msg_type\": \"D\", \"cl_ord_id\": \"ORD-11\", \"send_time_ms\": 400}}\n\n# Event 1: RECV_MSG msg_type=D, msg_seq_num=22 at t=1000\n# Target expected 20, got 22 -> Gap! Expected 20, received 22.\n# Standard FIX behavior on sequence gap: send ResendRequest (msg_type=\"2\"), begin=20, end=0 (or 21/infinity, but here end=0 or end_seq_no=0/999999). Wait, what does FinGate Session Shield do when sequence gap occurs?\n# Let's check typical rules or run a script to see what it generates.\n```",
+      "tool_call_python": "# Let's run a python script to simulate the exact behavior of this scenario according to standard FIX 4.4 / FinGate Session Shield rules.\n\nimport json\n\ntask = {\n  \"task_id\": \"T07\",\n  \"title\": \"Concurrent Bidirectional Sequence Gaps & Recovery\",\n  \"description\": \"An active session with send_redundant_resend_requests=False, NextSenderMsgSeqNum=12, and NextTargetMsgSeqNum=20 receives an inbound order (34=22) at t=1000ms, an inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11) at t=1500ms, and an inbound SequenceReset (34=20, NewSeqNo=22) at t=2000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": False\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 12,\n    \"next_target_seq_num\": 20,\n    \"last_sent_time_ms\": 500,\n    \"last_recv_time_ms\": 500,\n    \"outbound_messages_store\": [\n      {\n        \"msg_seq_num\": 10,\n        \"msg_type\": \"0\",\n        \"send_time_ms\": 200\n      },\n      {\n        \"msg_seq_num\": 11,\n        \"msg_type\": \"D\",\n        \"cl_ord_id\": \"ORD-11\",\n        \"send_time_ms\": 400\n      }\n    ]\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 22,\n      \"send_time_ms\": 1000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1500,\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 23,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11,\n      \"send_time_ms\": 1500\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2000,\n      \"msg_type\": \"4\",\n      \"msg_seq_num\": 20,\n      \"gap_fill_flag\": True,\n      \"new_seq_no\": 22,\n      \"poss_dup_flag\": True,\n      \"orig_sending_time_ms\": 1800,\n      \"send_time_ms\": 2000\n    }\n  ]\n}\n\nprint(\"Python simulation environment ready.\")",
+      "tool_stdout": "Python simulation environment ready.",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 4.0,
+      "prompt_tokens": 3172,
+      "completion_tokens": 1029,
+      "total_tokens": 4201,
+      "cost_usd": 0.000547
+    }
+  ]
+}

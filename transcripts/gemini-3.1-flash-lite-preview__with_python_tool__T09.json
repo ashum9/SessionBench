@@ -1,0 +1,95 @@
+{
+  "model": "gemini-3.1-flash-lite-preview",
+  "condition": "with_python_tool",
+  "task_id": "T09",
+  "level": 3,
+  "interacting_rules_count": 5,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T09\",\n  \"title\": \"Multiplexed Strategy Pod Faults & Upstream Order Lifecycle\",\n  \"description\": \"A gateway multiplexes two downstream strategy pods (pod-alpha and pod-beta) onto a single upstream venue session with pod_grace_timeout_ms=5000. Three working orders are initially active. Track the outbound venue messages across downstream pod disconnects, an upstream ExecutionReport (35=8), a pod reconnect, and a clock tick at t=15000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"pod_grace_timeout_ms\": 5000,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 20,\n    \"next_target_seq_num\": 30,\n    \"last_sent_time_ms\": 9000,\n    \"last_recv_time_ms\": 9000,\n    \"outbound_messages_store\": [],\n    \"working_orders\": [\n      {\n        \"cl_ord_id\": \"FG-alpha-01\",\n        \"pod_id\": \"pod-alpha\",\n        \"leaves_qty\": 100,\n        \"status\": \"WORKING\"\n      },\n      {\n        \"cl_ord_id\": \"FG-alpha-02\",\n        \"pod_id\": \"pod-alpha\",\n        \"leaves_qty\": 50,\n        \"status\": \"WORKING\"\n      },\n      {\n        \"cl_ord_id\": \"FG-beta-01\",\n        \"pod_id\": \"pod-beta\",\n        \"leaves_qty\": 200,\n        \"status\": \"WORKING\"\n      }\n    ]\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"POD_CRASH\",\n      \"timestamp_ms\": 10000,\n      \"pod_id\": \"pod-alpha\"\n    },\n    {\n      \"event_type\": \"POD_CRASH\",\n      \"timestamp_ms\": 11000,\n      \"pod_id\": \"pod-beta\"\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 12000,\n      \"msg_type\": \"8\",\n      \"msg_seq_num\": 30,\n      \"cl_ord_id\": \"FG-alpha-01\",\n      \"exec_type\": \"F\",\n      \"leaves_qty\": 0,\n      \"send_time_ms\": 12000\n    },\n    {\n      \"event_type\": \"POD_RECONNECT\",\n      \"timestamp_ms\": 14000,\n      \"pod_id\": \"pod-beta\"\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 15000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:27:07.070890+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic:\n# 1. Initial State: next_sender_seq_num=20, next_target_seq_num=30.\n# 2. POD_CRASH (pod-alpha) at 10000ms: Gateway marks orders for pod-alpha (FG-alpha-01, FG-alpha-02) as pending cancellation/cleanup.\n# 3. POD_CRASH (pod-beta) at 11000ms: Gateway marks orders for pod-beta (FG-beta-01) as pending cleanup.\n# 4. RECV_MSG (8) at 12000ms: seq 30. Processed. next_target_seq_num becomes 31.\n# 5. POD_RECONNECT (pod-beta) at 14000ms: pod-beta is back.\n# 6. CLOCK_TICK at 15000ms: Check pod_grace_timeout_ms (5000ms).\n#    - pod-alpha crashed at 10000ms. 15000 - 10000 = 5000ms. Grace period expired.\n#    - Gateway must cancel orders for pod-alpha (FG-alpha-01, FG-alpha-02).\n#    - FG-alpha-01 was already filled (leaves_qty=0), so only FG-alpha-02 needs cancellation (35=F).\n#    - pod-beta crashed at 11000ms. 15000 - 11000 = 4000ms. Grace period not expired.\n\n# Sequence of events:\n# - 12000ms: Receive 8 (seq 30). next_target_seq_num = 31.\n# - 15000ms: Cancel FG-alpha-02 (35=F).\n#   - msg_seq_num = 20.\n#   - next_sender_seq_num becomes 21.\n\noutbound_messages = [\n    {\n        \"msg_type\": \"F\",\n        \"msg_seq_num\": 20,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 15000,\n        \"cl_ord_id\": \"FG-alpha-02-CANCEL\",\n        \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"F\",\n      \"msg_seq_num\": 20,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 15000,\n      \"cl_ord_id\": \"FG-alpha-02-CANCEL\",\n      \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"F\",\n      \"msg_seq_num\": 20,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 15000,\n      \"cl_ord_id\": \"FG-alpha-02-CANCEL\",\n      \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation Logic:\n# 1. Initial State: next_sender_seq_num=20, next_target_seq_num=30.\n# 2. POD_CRASH (pod-alpha) at 10000ms: Gateway marks orders for pod-alpha (FG-alpha-01, FG-alpha-02) as pending cancellation/cleanup.\n# 3. POD_CRASH (pod-beta) at 11000ms: Gateway marks orders for pod-beta (FG-beta-01) as pending cleanup.\n# 4. RECV_MSG (8) at 12000ms: seq 30. Processed. next_target_seq_num becomes 31.\n# 5. POD_RECONNECT (pod-beta) at 14000ms: pod-beta is back.\n# 6. CLOCK_TICK at 15000ms: Check pod_grace_timeout_ms (5000ms).\n#    - pod-alpha crashed at 10000ms. 15000 - 10000 = 5000ms. Grace period expired.\n#    - Gateway must cancel orders for pod-alpha (FG-alpha-01, FG-alpha-02).\n#    - FG-alpha-01 was already filled (leaves_qty=0), so only FG-alpha-02 needs cancellation (35=F).\n#    - pod-beta crashed at 11000ms. 15000 - 11000 = 4000ms. Grace period not expired.\n\n# Sequence of events:\n# - 12000ms: Receive 8 (seq 30). next_target_seq_num = 31.\n# - 15000ms: Cancel FG-alpha-02 (35=F).\n#   - msg_seq_num = 20.\n#   - next_sender_seq_num becomes 21.\n\noutbound_messages = [\n    {\n        \"msg_type\": \"F\",\n        \"msg_seq_num\": 20,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 15000,\n        \"cl_ord_id\": \"FG-alpha-02-CANCEL\",\n        \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))",
+      "tool_stdout": "{\"outbound_messages\": [{\"msg_type\": \"F\", \"msg_seq_num\": 20, \"poss_dup_flag\": false, \"send_time_ms\": 15000, \"cl_ord_id\": \"FG-alpha-02-CANCEL\", \"orig_cl_ord_id\": \"FG-alpha-02\"}], \"final_state\": {\"status\": \"ACTIVE\", \"next_sender_seq_num\": 21, \"next_target_seq_num\": 31, \"disconnect_time_ms\": null}}",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 4.13,
+      "prompt_tokens": 3493,
+      "completion_tokens": 1000,
+      "total_tokens": 4493,
+      "cost_usd": 0.000562
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:27:44.669425+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for T09\n# Initial State:\n#   next_sender_seq_num: 20\n#   next_target_seq_num: 30\n#   working_orders: [alpha-01, alpha-02, beta-01]\n\n# 1. POD_CRASH (pod-alpha) @ 10000ms:\n#    - pod-alpha orders (alpha-01, alpha-02) are marked for cleanup after grace period (5000ms).\n#    - Grace expiry: 15000ms.\n\n# 2. POD_CRASH (pod-beta) @ 11000ms:\n#    - pod-beta order (beta-01) marked for cleanup after grace period (5000ms).\n#    - Grace expiry: 16000ms.\n\n# 3. RECV_MSG (8) @ 12000ms:\n#    - msg_seq_num 30 matches next_target_seq_num.\n#    - Process ExecutionReport for alpha-01 (leaves_qty=0).\n#    - next_target_seq_num becomes 31.\n#    - alpha-01 removed from working_orders.\n\n# 4. POD_RECONNECT (pod-beta) @ 14000ms:\n#    - pod-beta is back. Cleanup timer for beta-01 is cancelled.\n\n# 5. CLOCK_TICK @ 15000ms:\n#    - Check grace periods.\n#    - alpha-01: Already removed.\n#    - alpha-02: pod-alpha crashed at 10000ms, grace 5000ms -> expires at 15000ms.\n#    - Action: Cancel alpha-02 (send 35=F).\n#    - beta-01: pod-beta reconnected at 14000ms, timer cancelled.\n\n# Outbound Message:\n#   - 35=F (OrderCancelRequest) for alpha-02.\n#   - seq_num: 20.\n#   - next_sender_seq_num becomes 21.\n\noutbound_messages = [\n    {\n        \"msg_type\": \"F\",\n        \"msg_seq_num\": 20,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 15000,\n        \"cl_ord_id\": \"FG-alpha-02\",\n        \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"F\",\n      \"msg_seq_num\": 20,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 15000,\n      \"cl_ord_id\": \"FG-alpha-02\",\n      \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"F\",\n      \"msg_seq_num\": 20,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 15000,\n      \"cl_ord_id\": \"FG-alpha-02\",\n      \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for T09\n# Initial State:\n#   next_sender_seq_num: 20\n#   next_target_seq_num: 30\n#   working_orders: [alpha-01, alpha-02, beta-01]\n\n# 1. POD_CRASH (pod-alpha) @ 10000ms:\n#    - pod-alpha orders (alpha-01, alpha-02) are marked for cleanup after grace period (5000ms).\n#    - Grace expiry: 15000ms.\n\n# 2. POD_CRASH (pod-beta) @ 11000ms:\n#    - pod-beta order (beta-01) marked for cleanup after grace period (5000ms).\n#    - Grace expiry: 16000ms.\n\n# 3. RECV_MSG (8) @ 12000ms:\n#    - msg_seq_num 30 matches next_target_seq_num.\n#    - Process ExecutionReport for alpha-01 (leaves_qty=0).\n#    - next_target_seq_num becomes 31.\n#    - alpha-01 removed from working_orders.\n\n# 4. POD_RECONNECT (pod-beta) @ 14000ms:\n#    - pod-beta is back. Cleanup timer for beta-01 is cancelled.\n\n# 5. CLOCK_TICK @ 15000ms:\n#    - Check grace periods.\n#    - alpha-01: Already removed.\n#    - alpha-02: pod-alpha crashed at 10000ms, grace 5000ms -> expires at 15000ms.\n#    - Action: Cancel alpha-02 (send 35=F).\n#    - beta-01: pod-beta reconnected at 14000ms, timer cancelled.\n\n# Outbound Message:\n#   - 35=F (OrderCancelRequest) for alpha-02.\n#   - seq_num: 20.\n#   - next_sender_seq_num becomes 21.\n\noutbound_messages = [\n    {\n        \"msg_type\": \"F\",\n        \"msg_seq_num\": 20,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 15000,\n        \"cl_ord_id\": \"FG-alpha-02\",\n        \"orig_cl_ord_id\": \"FG-alpha-02\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 21,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))",
+      "tool_stdout": "{\"outbound_messages\": [{\"msg_type\": \"F\", \"msg_seq_num\": 20, \"poss_dup_flag\": false, \"send_time_ms\": 15000, \"cl_ord_id\": \"FG-alpha-02\", \"orig_cl_ord_id\": \"FG-alpha-02\"}], \"final_state\": {\"status\": \"ACTIVE\", \"next_sender_seq_num\": 21, \"next_target_seq_num\": 31, \"disconnect_time_ms\": null}}",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 37.09,
+      "prompt_tokens": 3527,
+      "completion_tokens": 1034,
+      "total_tokens": 4561,
+      "cost_usd": 0.000575
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:27:49.408426+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for T09\n# Initial state: next_sender_seq_num=20, next_target_seq_num=30\n# 1. POD_CRASH (pod-alpha) at 10000ms: No immediate outbound FIX message required by protocol, but state tracks pod status.\n# 2. POD_CRASH (pod-beta) at 11000ms: No immediate outbound FIX message.\n# 3. RECV_MSG (8) at 12000ms: Seq 30. Valid. next_target_seq_num becomes 31.\n# 4. POD_RECONNECT (pod-beta) at 14000ms: No outbound FIX message.\n# 5. CLOCK_TICK at 15000ms: Check heartbeats. last_sent_time_ms=9000, current=15000. \n#    Heartbeat interval is 30000ms. No heartbeat needed.\n\n# Final state calculation:\n# next_sender_seq_num: 20 (no messages sent)\n# next_target_seq_num: 31 (received seq 30)\n# status: ACTIVE\n\noutbound_messages = []\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 20,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 20,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 20,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for T09\n# Initial state: next_sender_seq_num=20, next_target_seq_num=30\n# 1. POD_CRASH (pod-alpha) at 10000ms: No immediate outbound FIX message required by protocol, but state tracks pod status.\n# 2. POD_CRASH (pod-beta) at 11000ms: No immediate outbound FIX message.\n# 3. RECV_MSG (8) at 12000ms: Seq 30. Valid. next_target_seq_num becomes 31.\n# 4. POD_RECONNECT (pod-beta) at 14000ms: No outbound FIX message.\n# 5. CLOCK_TICK at 15000ms: Check heartbeats. last_sent_time_ms=9000, current=15000. \n#    Heartbeat interval is 30000ms. No heartbeat needed.\n\n# Final state calculation:\n# next_sender_seq_num: 20 (no messages sent)\n# next_target_seq_num: 31 (received seq 30)\n# status: ACTIVE\n\noutbound_messages = []\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 20,\n    \"next_target_seq_num\": 31,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))",
+      "tool_stdout": "{\"outbound_messages\": [], \"final_state\": {\"status\": \"ACTIVE\", \"next_sender_seq_num\": 20, \"next_target_seq_num\": 31, \"disconnect_time_ms\": null}}",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 4.23,
+      "prompt_tokens": 3034,
+      "completion_tokens": 520,
+      "total_tokens": 3554,
+      "cost_usd": 0.000384
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "model": "gemini-3.1-flash-lite-preview",
+  "condition": "with_python_tool",
+  "task_id": "T02",
+  "level": 1,
+  "interacting_rules_count": 2,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T02\",\n  \"title\": \"Asynchronous Inbound Traffic & Session Liveness Timers\",\n  \"description\": \"An active FIX 4.4 session is configured with heart_bt_int_ms=30000 and test_request_grace_ms=30000. Inbound messages arrive at t=12000ms and t=41000ms interspersed with periodic clock ticks up to t=101000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"test_request_grace_ms\": 30000\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 8,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 12000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 8,\n      \"send_time_ms\": 12000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 30000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 41000,\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 9,\n      \"send_time_ms\": 41000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 60000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 71000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 101000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:24:19.754155+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for FIX 4.4 Session T02\n# Config: heart_bt_int_ms = 30000, test_request_grace_ms = 30000\n# Initial: next_sender_seq_num=5, next_target_seq_num=8\n\n# Timeline:\n# t=0: last_recv_time_ms = 0\n# t=12000: RECV_MSG (D, seq=8). last_recv_time_ms = 12000. next_target_seq_num = 9.\n# t=30000: CLOCK_TICK. No action (last_recv_time_ms=12000, 30000-12000 < 30000).\n# t=41000: RECV_MSG (0, seq=9). last_recv_time_ms = 41000. next_target_seq_num = 10.\n# t=60000: CLOCK_TICK. No action (60000-41000 < 30000).\n# t=71000: CLOCK_TICK. 71000 - 41000 = 30000. Heartbeat interval reached. \n#          Engine sends Heartbeat (0). next_sender_seq_num = 5 -> 6. last_sent_time_ms = 71000.\n# t=101000: CLOCK_TICK. 101000 - 41000 = 60000. \n#           Heartbeat interval (30s) + Grace (30s) = 60s.\n#           Since no message received since 41000, at 101000, we trigger TestRequest.\n#           next_sender_seq_num = 6 -> 7.\n\noutbound = [\n    {\n        \"msg_type\": \"0\",\n        \"msg_seq_num\": 5,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 71000\n    },\n    {\n        \"msg_type\": \"1\",\n        \"msg_seq_num\": 6,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 101000,\n        \"test_req_id\": \"TEST_101000\"\n    }\n]\n\nprint(outbound)\n```\n\n```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 71000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 7,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 71000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 7,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for FIX 4.4 Session T02\n# Config: heart_bt_int_ms = 30000, test_request_grace_ms = 30000\n# Initial: next_sender_seq_num=5, next_target_seq_num=8\n\n# Timeline:\n# t=0: last_recv_time_ms = 0\n# t=12000: RECV_MSG (D, seq=8). last_recv_time_ms = 12000. next_target_seq_num = 9.\n# t=30000: CLOCK_TICK. No action (last_recv_time_ms=12000, 30000-12000 < 30000).\n# t=41000: RECV_MSG (0, seq=9). last_recv_time_ms = 41000. next_target_seq_num = 10.\n# t=60000: CLOCK_TICK. No action (60000-41000 < 30000).\n# t=71000: CLOCK_TICK. 71000 - 41000 = 30000. Heartbeat interval reached. \n#          Engine sends Heartbeat (0). next_sender_seq_num = 5 -> 6. last_sent_time_ms = 71000.\n# t=101000: CLOCK_TICK. 101000 - 41000 = 60000. \n#           Heartbeat interval (30s) + Grace (30s) = 60s.\n#           Since no message received since 41000, at 101000, we trigger TestRequest.\n#           next_sender_seq_num = 6 -> 7.\n\noutbound = [\n    {\n        \"msg_type\": \"0\",\n        \"msg_seq_num\": 5,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 71000\n    },\n    {\n        \"msg_type\": \"1\",\n        \"msg_seq_num\": 6,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 101000,\n        \"test_req_id\": \"TEST_101000\"\n    }\n]\n\nprint(outbound)",
+      "tool_stdout": "[{'msg_type': '0', 'msg_seq_num': 5, 'poss_dup_flag': False, 'send_time_ms': 71000}, {'msg_type': '1', 'msg_seq_num': 6, 'poss_dup_flag': False, 'send_time_ms': 101000, 'test_req_id': 'TEST_101000'}]",
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "0",
+            "msg_seq_num": 5,
+            "poss_dup_flag": false,
+            "send_time_ms": 71000
+          },
+          {
+            "msg_type": "1",
+            "msg_seq_num": 6,
+            "poss_dup_flag": false,
+            "send_time_ms": 101000,
+            "test_req_id": "TEST_101000"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 7,
+          "next_target_seq_num": 10,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.2833,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.3333,
+          "seq_num_and_flags_score": 0.3333,
+          "final_state_score": 0.3333,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "outbound_messages count mismatch: expected 3, got 2",
+          "msg[1] msg_type mismatch: expected '0', got '1'",
+          "final_state.status mismatch: expected 'DISCONNECTED', got 'ACTIVE'",
+          "final_state.next_sender_seq_num mismatch: expected 8, got 7",
+          "msg[0] send_time_ms mismatch: expected 30000 (+/-5ms), got 71000",
+          "msg[1] send_time_ms mismatch: expected 60000 (+/-5ms), got 101000",
+          "final_state.disconnect_time_ms mismatch: expected 101000, got None"
+        ]
+      },
+      "latency_sec": 20.23,
+      "prompt_tokens": 3038,
+      "completion_tokens": 1024,
+      "total_tokens": 4062,
+      "cost_usd": 0.000535
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:24:41.446789+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for T02\n# Config: heart_bt_int_ms = 30000, grace = 30000\n# Initial: next_sender_seq_num = 5, next_target_seq_num = 8\n\n# Timeline:\n# t=0: last_recv_time_ms = 0\n# t=12000: RECV_MSG (D, seq=8). last_recv_time_ms = 12000. next_target_seq_num = 9.\n# t=30000: CLOCK_TICK. Check heartbeat: 30000 - 12000 = 18000 < 30000. No action.\n# t=41000: RECV_MSG (0, seq=9). last_recv_time_ms = 41000. next_target_seq_num = 10.\n# t=60000: CLOCK_TICK. Check heartbeat: 60000 - 41000 = 19000 < 30000. No action.\n# t=71000: CLOCK_TICK. Check heartbeat: 71000 - 41000 = 30000. Send Heartbeat (0).\n#          last_sent_time_ms = 71000. next_sender_seq_num = 6.\n# t=101000: CLOCK_TICK. Check liveness: 101000 - 41000 = 60000. \n#           Heartbeat interval (30s) + Grace (30s) = 60s. \n#           At 101000, 101000 - 41000 = 60000. \n#           If no message received since 41000, at 101000 (exactly 60s later), \n#           the session times out.\n\n# Wait, let's re-verify the timeout logic:\n# Last message received at 41000.\n# Heartbeat interval = 30000.\n# TestRequest sent at 41000 + 30000 = 71000? \n# Actually, if we send a heartbeat at 71000, we are still active.\n# At 101000, it has been 60000ms since last message.\n# The session should send a TestRequest at 71000 (if no activity) or just heartbeat?\n# Usually, if no activity, send Heartbeat at 30s, TestRequest at 60s.\n# 41000 + 30000 = 71000 (Heartbeat)\n# 41000 + 60000 = 101000 (TestRequest)\n\nprint(\"Events processed.\")\n```\n\n```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 71000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 7,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 71000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 7,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for T02\n# Config: heart_bt_int_ms = 30000, grace = 30000\n# Initial: next_sender_seq_num = 5, next_target_seq_num = 8\n\n# Timeline:\n# t=0: last_recv_time_ms = 0\n# t=12000: RECV_MSG (D, seq=8). last_recv_time_ms = 12000. next_target_seq_num = 9.\n# t=30000: CLOCK_TICK. Check heartbeat: 30000 - 12000 = 18000 < 30000. No action.\n# t=41000: RECV_MSG (0, seq=9). last_recv_time_ms = 41000. next_target_seq_num = 10.\n# t=60000: CLOCK_TICK. Check heartbeat: 60000 - 41000 = 19000 < 30000. No action.\n# t=71000: CLOCK_TICK. Check heartbeat: 71000 - 41000 = 30000. Send Heartbeat (0).\n#          last_sent_time_ms = 71000. next_sender_seq_num = 6.\n# t=101000: CLOCK_TICK. Check liveness: 101000 - 41000 = 60000. \n#           Heartbeat interval (30s) + Grace (30s) = 60s. \n#           At 101000, 101000 - 41000 = 60000. \n#           If no message received since 41000, at 101000 (exactly 60s later), \n#           the session times out.\n\n# Wait, let's re-verify the timeout logic:\n# Last message received at 41000.\n# Heartbeat interval = 30000.\n# TestRequest sent at 41000 + 30000 = 71000? \n# Actually, if we send a heartbeat at 71000, we are still active.\n# At 101000, it has been 60000ms since last message.\n# The session should send a TestRequest at 71000 (if no activity) or just heartbeat?\n# Usually, if no activity, send Heartbeat at 30s, TestRequest at 60s.\n# 41000 + 30000 = 71000 (Heartbeat)\n# 41000 + 60000 = 101000 (TestRequest)\n\nprint(\"Events processed.\")",
+      "tool_stdout": "Events processed.",
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "0",
+            "msg_seq_num": 5,
+            "poss_dup_flag": false,
+            "send_time_ms": 71000
+          },
+          {
+            "msg_type": "1",
+            "msg_seq_num": 6,
+            "poss_dup_flag": false,
+            "send_time_ms": 101000,
+            "test_req_id": "TEST_101000"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 7,
+          "next_target_seq_num": 10,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.2833,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.3333,
+          "seq_num_and_flags_score": 0.3333,
+          "final_state_score": 0.3333,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "outbound_messages count mismatch: expected 3, got 2",
+          "msg[1] msg_type mismatch: expected '0', got '1'",
+          "final_state.status mismatch: expected 'DISCONNECTED', got 'ACTIVE'",
+          "final_state.next_sender_seq_num mismatch: expected 8, got 7",
+          "msg[0] send_time_ms mismatch: expected 30000 (+/-5ms), got 71000",
+          "msg[1] send_time_ms mismatch: expected 60000 (+/-5ms), got 101000",
+          "final_state.disconnect_time_ms mismatch: expected 101000, got None"
+        ]
+      },
+      "latency_sec": 21.19,
+      "prompt_tokens": 3047,
+      "completion_tokens": 1132,
+      "total_tokens": 4179,
+      "cost_usd": 0.000568
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:24:47.076816+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic:\n# Config: heart_bt_int_ms = 30000, grace = 30000\n# Initial: next_sender_seq_num = 5, next_target_seq_num = 8, last_recv = 0\n\n# t=12000: RECV_MSG (D, seq=8). \n#   - Valid seq (8 == 8). \n#   - Update next_target_seq_num = 9. \n#   - last_recv_time_ms = 12000.\n\n# t=30000: CLOCK_TICK. \n#   - Check heartbeat: (30000 - 0) > 30000? No. \n#   - Check test request: (30000 - 12000) > 30000? No.\n\n# t=41000: RECV_MSG (0, seq=9).\n#   - Valid seq (9 == 9).\n#   - Update next_target_seq_num = 10.\n#   - last_recv_time_ms = 41000.\n\n# t=60000: CLOCK_TICK.\n#   - Check heartbeat: (60000 - 0) > 30000? Yes. \n#   - Send Heartbeat (0). seq=5. next_sender_seq_num = 6. last_sent_time_ms = 60000.\n\n# t=71000: CLOCK_TICK.\n#   - Check heartbeat: (71000 - 60000) < 30000. OK.\n#   - Check test request: (71000 - 41000) = 30000. Not > 30000. OK.\n\n# t=101000: CLOCK_TICK.\n#   - Check heartbeat: (101000 - 60000) > 30000? Yes.\n#   - Send Heartbeat (0). seq=6. next_sender_seq_num = 7. last_sent_time_ms = 101000.\n#   - Check test request: (101000 - 41000) = 60000. 60000 > 30000? Yes.\n#   - Send TestRequest (1). seq=7. next_sender_seq_num = 8. last_sent_time_ms = 101000.\n\nprint(\"Simulation complete.\")\n```\n\n```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 60000\n    },\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 7,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 8,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 60000\n    },\n    {\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 6,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000\n    },\n    {\n      \"msg_type\": \"1\",\n      \"msg_seq_num\": 7,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 101000,\n      \"test_req_id\": \"TEST_101000\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 8,\n    \"next_target_seq_num\": 10,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation Logic:\n# Config: heart_bt_int_ms = 30000, grace = 30000\n# Initial: next_sender_seq_num = 5, next_target_seq_num = 8, last_recv = 0\n\n# t=12000: RECV_MSG (D, seq=8). \n#   - Valid seq (8 == 8). \n#   - Update next_target_seq_num = 9. \n#   - last_recv_time_ms = 12000.\n\n# t=30000: CLOCK_TICK. \n#   - Check heartbeat: (30000 - 0) > 30000? No. \n#   - Check test request: (30000 - 12000) > 30000? No.\n\n# t=41000: RECV_MSG (0, seq=9).\n#   - Valid seq (9 == 9).\n#   - Update next_target_seq_num = 10.\n#   - last_recv_time_ms = 41000.\n\n# t=60000: CLOCK_TICK.\n#   - Check heartbeat: (60000 - 0) > 30000? Yes. \n#   - Send Heartbeat (0). seq=5. next_sender_seq_num = 6. last_sent_time_ms = 60000.\n\n# t=71000: CLOCK_TICK.\n#   - Check heartbeat: (71000 - 60000) < 30000. OK.\n#   - Check test request: (71000 - 41000) = 30000. Not > 30000. OK.\n\n# t=101000: CLOCK_TICK.\n#   - Check heartbeat: (101000 - 60000) > 30000? Yes.\n#   - Send Heartbeat (0). seq=6. next_sender_seq_num = 7. last_sent_time_ms = 101000.\n#   - Check test request: (101000 - 41000) = 60000. 60000 > 30000? Yes.\n#   - Send TestRequest (1). seq=7. next_sender_seq_num = 8. last_sent_time_ms = 101000.\n\nprint(\"Simulation complete.\")",
+      "tool_stdout": "Simulation complete.",
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "0",
+            "msg_seq_num": 5,
+            "poss_dup_flag": false,
+            "send_time_ms": 60000
+          },
+          {
+            "msg_type": "0",
+            "msg_seq_num": 6,
+            "poss_dup_flag": false,
+            "send_time_ms": 101000
+          },
+          {
+            "msg_type": "1",
+            "msg_seq_num": 7,
+            "poss_dup_flag": false,
+            "send_time_ms": 101000,
+            "test_req_id": "TEST_101000"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 8,
+          "next_target_seq_num": 10,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.7667,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 1.0,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "final_state.status mismatch: expected 'DISCONNECTED', got 'ACTIVE'",
+          "msg[0] send_time_ms mismatch: expected 30000 (+/-5ms), got 60000",
+          "msg[1] send_time_ms mismatch: expected 60000 (+/-5ms), got 101000",
+          "msg[2] send_time_ms mismatch: expected 71000 (+/-5ms), got 101000",
+          "final_state.disconnect_time_ms mismatch: expected 101000, got None"
+        ]
+      },
+      "latency_sec": 5.13,
+      "prompt_tokens": 3021,
+      "completion_tokens": 1161,
+      "total_tokens": 4182,
+      "cost_usd": 0.000575
+    }
+  ]
+}

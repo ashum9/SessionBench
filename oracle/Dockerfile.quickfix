@@ -1,0 +1,24 @@
+# Dockerfile.quickfix
+# Reproducible QuickFIX/C++ + Python Oracle Verification Environment
+# Used to generate and cross-verify ground-truth FIX 4.4 session traces.
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    g++ \
+    cmake \
+    git \
+    libssl-dev \
+    libxml2-dev \
+    swig \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace/sessionbench
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir pytest==8.3.3 pillow==11.0.0 matplotlib==3.9.2 python-dotenv==1.0.1
+
+COPY . .
+
+# Verify reference generation and run the 80-mutation test suite
+CMD ["sh", "-c", "python3 oracle/generate_reference.py --verify && pytest -v graders/mutation_test.py"]

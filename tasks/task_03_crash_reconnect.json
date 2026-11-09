@@ -1,0 +1,30 @@
+{
+  "task_id": "T03",
+  "filename": "task_03_crash_reconnect.json",
+  "ref_filename": "ref_03.json",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "title": "Warm Session Reconnection After Process Restart",
+  "description": "A session resumes in DISCONNECTED status with persisted sequence counters NextSenderMsgSeqNum=15 and NextTargetMsgSeqNum=22. At t=50000ms, an inbound Logon (35=A) arrives from the counterparty with MsgSeqNum=25.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "DISCONNECTED",
+    "next_sender_seq_num": 15,
+    "next_target_seq_num": 22,
+    "last_sent_time_ms": 40000,
+    "last_recv_time_ms": 40000,
+    "outbound_messages_store": []
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 50000,
+      "msg_type": "A",
+      "msg_seq_num": 25,
+      "send_time_ms": 50000
+    }
+  ]
+}

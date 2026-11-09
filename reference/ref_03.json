@@ -1,0 +1,31 @@
+{
+  "task_id": "T03",
+  "rules_tested": [
+    "R5: Persistent sequence number continuity across crashes",
+    "R6: Logon (35=A) acknowledgement must precede ResendRequest (35=2) on reconnect gap",
+    "R7: Inbound sequence gap (34 > NextTargetMsgSeqNum) triggers ResendRequest (7=expected, 16=0) and RESENDING state"
+  ],
+  "expert_rationale": "Upon receiving Logon (35=A, 34=25) when expecting 22, the engine must first send Logon (35=A, 34=15), then emit ResendRequest (35=2, 34=16, BeginSeqNo=22, EndSeqNo=0), preserve NextTargetMsgSeqNum=22, and enter RESENDING.",
+  "outbound_messages": [
+    {
+      "msg_type": "A",
+      "send_time_ms": 50000,
+      "msg_seq_num": 15,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "2",
+      "begin_seq_no": 22,
+      "end_seq_no": 0,
+      "send_time_ms": 50000,
+      "msg_seq_num": 16,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "RESENDING",
+    "next_sender_seq_num": 17,
+    "next_target_seq_num": 22,
+    "disconnect_time_ms": null
+  }
+}

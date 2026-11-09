@@ -1,0 +1,168 @@
+{
+  "model": "gemini-3.1-flash-lite-preview",
+  "condition": "no_tools",
+  "task_id": "T03",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T03\",\n  \"title\": \"Warm Session Reconnection After Process Restart\",\n  \"description\": \"A session resumes in DISCONNECTED status with persisted sequence counters NextSenderMsgSeqNum=15 and NextTargetMsgSeqNum=22. At t=50000ms, an inbound Logon (35=A) arrives from the counterparty with MsgSeqNum=25.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 15,\n    \"next_target_seq_num\": 22,\n    \"last_sent_time_ms\": 40000,\n    \"last_recv_time_ms\": 40000,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 50000,\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 25,\n      \"send_time_ms\": 50000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:22:41.961445+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 15,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"reset_seq_num_flag\": false\n    },\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 16,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"begin_seq_no\": 22,\n      \"end_seq_no\": 24\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 17,\n    \"next_target_seq_num\": 22,\n    \"disconnect_time_ms\": null\n  }\n}\n```",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 15,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "reset_seq_num_flag": false
+          },
+          {
+            "msg_type": "2",
+            "msg_seq_num": 16,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "begin_seq_no": 22,
+            "end_seq_no": 24
+          }
+        ],
+        "final_state": {
+          "status": "RESENDING",
+          "next_sender_seq_num": 17,
+          "next_target_seq_num": 22,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.825,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.5,
+          "final_state_score": 1.0,
+          "timing_and_reject_score": 1.0
+        },
+        "diff_reasons": [
+          "msg[1] end_seq_no mismatch: expected 0, got 24"
+        ]
+      },
+      "latency_sec": 1.75,
+      "prompt_tokens": 789,
+      "completion_tokens": 229,
+      "total_tokens": 1018,
+      "cost_usd": 0.000128
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:22:44.111993+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 15,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"reset_seq_num_flag\": false\n    },\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 16,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"begin_seq_no\": 22,\n      \"end_seq_no\": 24\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 17,\n    \"next_target_seq_num\": 22,\n    \"disconnect_time_ms\": null\n  }\n}\n```",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 15,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "reset_seq_num_flag": false
+          },
+          {
+            "msg_type": "2",
+            "msg_seq_num": 16,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "begin_seq_no": 22,
+            "end_seq_no": 24
+          }
+        ],
+        "final_state": {
+          "status": "RESENDING",
+          "next_sender_seq_num": 17,
+          "next_target_seq_num": 22,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.825,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.5,
+          "final_state_score": 1.0,
+          "timing_and_reject_score": 1.0
+        },
+        "diff_reasons": [
+          "msg[1] end_seq_no mismatch: expected 0, got 24"
+        ]
+      },
+      "latency_sec": 1.65,
+      "prompt_tokens": 789,
+      "completion_tokens": 229,
+      "total_tokens": 1018,
+      "cost_usd": 0.000128
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:22:46.270371+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 15,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"reset_seq_num_flag\": false\n    },\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 16,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 50000,\n      \"begin_seq_no\": 22,\n      \"end_seq_no\": 24\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 17,\n    \"next_target_seq_num\": 26,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 15,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "reset_seq_num_flag": false
+          },
+          {
+            "msg_type": "2",
+            "msg_seq_num": 16,
+            "poss_dup_flag": false,
+            "send_time_ms": 50000,
+            "begin_seq_no": 22,
+            "end_seq_no": 24
+          }
+        ],
+        "final_state": {
+          "status": "RESENDING",
+          "next_sender_seq_num": 17,
+          "next_target_seq_num": 26,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.7417,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.5,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 1.0
+        },
+        "diff_reasons": [
+          "msg[1] end_seq_no mismatch: expected 0, got 24",
+          "final_state.next_target_seq_num mismatch: expected 22, got 26"
+        ]
+      },
+      "latency_sec": 1.65,
+      "prompt_tokens": 789,
+      "completion_tokens": 224,
+      "total_tokens": 1013,
+      "cost_usd": 0.000126
+    }
+  ]
+}

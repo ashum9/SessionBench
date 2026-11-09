@@ -1,0 +1,73 @@
+{
+  "task_id": "T09",
+  "filename": "task_09_session_shield_cod.json",
+  "ref_filename": "ref_09.json",
+  "level": 3,
+  "interacting_rules_count": 5,
+  "title": "Multiplexed Strategy Pod Faults & Upstream Order Lifecycle",
+  "description": "A gateway multiplexes two downstream strategy pods (pod-alpha and pod-beta) onto a single upstream venue session with pod_grace_timeout_ms=5000. Three working orders are initially active. Track the outbound venue messages across downstream pod disconnects, an upstream ExecutionReport (35=8), a pod reconnect, and a clock tick at t=15000ms.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "pod_grace_timeout_ms": 5000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 20,
+    "next_target_seq_num": 30,
+    "last_sent_time_ms": 9000,
+    "last_recv_time_ms": 9000,
+    "outbound_messages_store": [],
+    "working_orders": [
+      {
+        "cl_ord_id": "FG-alpha-01",
+        "pod_id": "pod-alpha",
+        "leaves_qty": 100,
+        "status": "WORKING"
+      },
+      {
+        "cl_ord_id": "FG-alpha-02",
+        "pod_id": "pod-alpha",
+        "leaves_qty": 50,
+        "status": "WORKING"
+      },
+      {
+        "cl_ord_id": "FG-beta-01",
+        "pod_id": "pod-beta",
+        "leaves_qty": 200,
+        "status": "WORKING"
+      }
+    ]
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "POD_CRASH",
+      "timestamp_ms": 10000,
+      "pod_id": "pod-alpha"
+    },
+    {
+      "event_type": "POD_CRASH",
+      "timestamp_ms": 11000,
+      "pod_id": "pod-beta"
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 12000,
+      "msg_type": "8",
+      "msg_seq_num": 30,
+      "cl_ord_id": "FG-alpha-01",
+      "exec_type": "F",
+      "leaves_qty": 0,
+      "send_time_ms": 12000
+    },
+    {
+      "event_type": "POD_RECONNECT",
+      "timestamp_ms": 14000,
+      "pod_id": "pod-beta"
+    },
+    {
+      "event_type": "CLOCK_TICK",
+      "timestamp_ms": 15000
+    }
+  ]
+}

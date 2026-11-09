@@ -1,0 +1,62 @@
+{
+  "task_id": "T06",
+  "filename": "task_06_chunked_resend_infinity.json",
+  "ref_filename": "ref_06.json",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "title": "Open-Ended Replay With Prior Session-Level Rejections",
+  "description": "An active session at NextSenderMsgSeqNum=15 and NextTargetMsgSeqNum=10 stores outbound messages 10..14 (comprising orders, a session reject, a heartbeat, and a test request). At t=4000ms, the counterparty sends an inbound ResendRequest (35=2) with BeginSeqNo=10 and EndSeqNo=0.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 15,
+    "next_target_seq_num": 10,
+    "last_sent_time_ms": 3500,
+    "last_recv_time_ms": 3500,
+    "outbound_messages_store": [
+      {
+        "msg_seq_num": 10,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-10",
+        "send_time_ms": 1000
+      },
+      {
+        "msg_seq_num": 11,
+        "msg_type": "3",
+        "ref_seq_num": 5,
+        "session_reject_reason": 1,
+        "send_time_ms": 1500
+      },
+      {
+        "msg_seq_num": 12,
+        "msg_type": "0",
+        "send_time_ms": 2000
+      },
+      {
+        "msg_seq_num": 13,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-13",
+        "send_time_ms": 2500
+      },
+      {
+        "msg_seq_num": 14,
+        "msg_type": "1",
+        "send_time_ms": 3000
+      }
+    ]
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 4000,
+      "msg_type": "2",
+      "msg_seq_num": 10,
+      "begin_seq_no": 10,
+      "end_seq_no": 0,
+      "send_time_ms": 4000
+    }
+  ]
+}

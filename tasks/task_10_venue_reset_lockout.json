@@ -1,0 +1,52 @@
+{
+  "task_id": "T10",
+  "filename": "task_10_venue_reset_lockout.json",
+  "ref_filename": "ref_10.json",
+  "level": 3,
+  "interacting_rules_count": 5,
+  "title": "Unclean Transport Disconnect, Penalty Cooldown & Sequence Reset",
+  "description": "An active session with heart_bt_int_ms=30000 and unclean_drop_lockout_multiplier=2 experiences an unclean TCP_DROP at t=100000ms, followed by reconnection attempts at t=125000ms and t=161000ms, an inbound Logon at t=161100ms, and a new order submission at t=162000ms.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "unclean_drop_lockout_multiplier": 2,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 45,
+    "next_target_seq_num": 60,
+    "last_sent_time_ms": 95000,
+    "last_recv_time_ms": 95000,
+    "outbound_messages_store": []
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "TCP_DROP",
+      "timestamp_ms": 100000,
+      "clean": false
+    },
+    {
+      "event_type": "RECONNECT_ATTEMPT",
+      "timestamp_ms": 125000,
+      "reset_seq_num_flag": false
+    },
+    {
+      "event_type": "RECONNECT_ATTEMPT",
+      "timestamp_ms": 161000,
+      "reset_seq_num_flag": true
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 161100,
+      "msg_type": "A",
+      "msg_seq_num": 1,
+      "reset_seq_num_flag": true,
+      "send_time_ms": 161100
+    },
+    {
+      "event_type": "SEND_ORDER",
+      "timestamp_ms": 162000,
+      "cl_ord_id": "ORD-POST-RESET-1"
+    }
+  ]
+}

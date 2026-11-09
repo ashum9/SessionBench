@@ -1,0 +1,49 @@
+{
+  "task_id": "T04",
+  "filename": "task_04_possdup_clockskew.json",
+  "ref_filename": "ref_04.json",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "title": "Inbound Sequence Anomalies & Header Validation",
+  "description": "An active session at NextSenderMsgSeqNum=10 and NextTargetMsgSeqNum=20 receives three consecutive inbound NewOrderSingle (35=D) messages at t=1000ms, t=2000ms, and t=3000ms with varying sequence numbers and header flags.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 10,
+    "next_target_seq_num": 20,
+    "last_sent_time_ms": 0,
+    "last_recv_time_ms": 0,
+    "outbound_messages_store": []
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 1000,
+      "msg_type": "D",
+      "msg_seq_num": 18,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 500,
+      "send_time_ms": 1000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2000,
+      "msg_type": "D",
+      "msg_seq_num": 20,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": null,
+      "send_time_ms": 2000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 3000,
+      "msg_type": "D",
+      "msg_seq_num": 19,
+      "poss_dup_flag": false,
+      "send_time_ms": 3000
+    }
+  ]
+}

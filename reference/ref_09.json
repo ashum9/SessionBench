@@ -1,0 +1,27 @@
+{
+  "task_id": "T09",
+  "rules_tested": [
+    "R16: N:1 Strategy Pod Multiplexing & Order Ledger Ownership Tracking",
+    "R17: Session Shield \u2014 Downstream POD_CRASH keeps upstream Venue FIX session ACTIVE during grace window",
+    "R18: Inbound ExecutionReport (35=8, LeavesQty=0) during grace window marks order FILLED",
+    "R19: POD_RECONNECT within grace window cancels pending synthetic Cancel-on-Disconnect timer",
+    "R20: Grace timer expiration emits synthetic OrderCancelRequest (35=F) ONLY for remaining working orders of expired pod"
+  ],
+  "expert_rationale": "pod-alpha crashes at t=10000ms (deadline 15000ms) and pod-beta at t=11000ms (deadline 16000ms). At t=12000ms, FG-alpha-01 is fully filled (leaves_qty=0). At t=14000ms, pod-beta reconnects. At t=15000ms, only FG-alpha-02 remains working for expired pod-alpha -> emits single 35=F for FG-alpha-02.",
+  "outbound_messages": [
+    {
+      "msg_type": "F",
+      "cl_ord_id": "CANCEL-FG-alpha-02",
+      "orig_cl_ord_id": "FG-alpha-02",
+      "send_time_ms": 15000,
+      "msg_seq_num": 20,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 21,
+    "next_target_seq_num": 31,
+    "disconnect_time_ms": null
+  }
+}

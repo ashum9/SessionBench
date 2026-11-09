@@ -1,0 +1,10 @@
+# SessionBench: Deterministic FIX 4.4 Session State Machine Benchmark
+# Pinned dependencies for reproducible execution
+pytest==8.3.3
+openai==1.54.3
+anthropic==0.39.0
+google-genai==0.3.0
+pillow==11.0.0
+matplotlib==3.9.2
+python-dotenv==1.0.1
+quickfix==1.15.1 ; platform_system == "Linux"

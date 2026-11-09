@@ -1,0 +1,863 @@
+{
+  "total_reference_tasks": 10,
+  "reference_pass_count": 10,
+  "reference_pass_rate": 1.0,
+  "total_mutations_tested": 80,
+  "mutations_rejected_count": 80,
+  "mutation_rejection_rate": 1.0,
+  "mean_mutated_partial_score": 0.8596,
+  "reference_Verification": [
+    {
+      "task_id": "T01",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T02",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T03",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T04",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T05",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T06",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T07",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T08",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T09",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    },
+    {
+      "task_id": "T10",
+      "exact_pass": 1,
+      "partial_score": 1.0
+    }
+  ],
+  "mutation_details": [
+    {
+      "task_id": "T01",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 10, got 11"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 4, got 3"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.93,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected True, got False"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.88,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected '4', got '0'"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.93,
+      "diff_reasons": [
+        "msg[0] new_seq_no mismatch: expected 5, got 4"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.93,
+      "diff_reasons": [
+        "msg[1] cl_ord_id mismatch: expected 'ORD-2', got 'ORD-2-CORRUPT'"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T01",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.975,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 2000 (+/-5ms), got 7000"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 8, got 9"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 10, got 9"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8833,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected '0', got '1'"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8833,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 5, got 6"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.82,
+      "diff_reasons": [
+        "outbound_messages count mismatch: expected 3, got 4"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'DISCONNECTED', got 'ACTIVE'"
+      ]
+    },
+    {
+      "task_id": "T02",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9625,
+      "diff_reasons": [
+        "final_state.disconnect_time_ms mismatch: expected 101000, got 106000"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 17, got 18"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 22, got 21"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.7,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected 'A', got '0'"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 15, got 16"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[1] begin_seq_no mismatch: expected 22, got 23"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'RESENDING', got 'ACTIVE'"
+      ]
+    },
+    {
+      "task_id": "T03",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 50000 (+/-5ms), got 55000"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 12, got 13"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 21, got 20"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.7,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected '3', got '0'"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 10, got 11"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "msg[0] session_reject_reason mismatch: expected 1, got 100"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'DISCONNECTED', got 'ACTIVE'"
+      ]
+    },
+    {
+      "task_id": "T04",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "final_state.disconnect_time_ms mismatch: expected 3000, got 8000"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 10, got 11"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 26, got 25"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.7,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected '3', got '0'"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 8, got 9"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "msg[0] session_reject_reason mismatch: expected 5, got 104"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T05",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 1000 (+/-5ms), got 6000"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 15, got 16"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 11, got 10"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9125,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected True, got False"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.85,
+      "diff_reasons": [
+        "msg[1] msg_type mismatch: expected '4', got '0'"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9125,
+      "diff_reasons": [
+        "msg[1] new_seq_no mismatch: expected 13, got 12"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9125,
+      "diff_reasons": [
+        "msg[0] cl_ord_id mismatch: expected 'ORD-10', got 'ORD-10-CORRUPT'"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T06",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.97,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 4000 (+/-5ms), got 9000"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 13, got 14"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 24, got 23"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8833,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8,
+      "diff_reasons": [
+        "msg[1] msg_type mismatch: expected '4', got '0'"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8833,
+      "diff_reasons": [
+        "msg[1] new_seq_no mismatch: expected 11, got 10"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.8833,
+      "diff_reasons": [
+        "msg[0] begin_seq_no mismatch: expected 20, got 21"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T07",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9625,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 1000 (+/-5ms), got 6000"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 6, got 7"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 16, got 15"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.4,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected '2', got '0'"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 5, got 6"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] begin_seq_no mismatch: expected 10, got 11"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T08",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.925,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 1000 (+/-5ms), got 6000"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 21, got 22"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 31, got 30"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.4,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected 'F', got '0'"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 20, got 21"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.65,
+      "diff_reasons": [
+        "msg[0] cl_ord_id mismatch: expected 'CANCEL-FG-alpha-02', got 'CANCEL-FG-alpha-02-CORRUPT'"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T09",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.925,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 15000 (+/-5ms), got 20000"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M1_off_by_one_sender_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_sender_seq_num mismatch: expected 3, got 4"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M2_off_by_one_target_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.next_target_seq_num mismatch: expected 2, got 1"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M3_flip_possdup_flag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] poss_dup_flag mismatch: expected False, got True"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M4_uncoalesced_or_wrong_msg_type",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.7,
+      "diff_reasons": [
+        "msg[0] msg_type mismatch: expected 'A', got '0'"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M5_off_by_one_new_seq_no_or_msg_seq",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[0] msg_seq_num mismatch: expected 1, got 2"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M6_wrong_reject_reason_or_tag",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.825,
+      "diff_reasons": [
+        "msg[1] cl_ord_id mismatch: expected 'ORD-POST-RESET-1', got 'ORD-POST-RESET-1-CORRUPT'"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M7_premature_state_transition",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.9167,
+      "diff_reasons": [
+        "final_state.status mismatch: expected 'ACTIVE', got 'RESENDING'"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "mutation": "M8_timer_drift_5000ms",
+      "exact_pass": 0,
+      "rejected": true,
+      "partial_score": 0.95,
+      "diff_reasons": [
+        "msg[0] send_time_ms mismatch: expected 161000 (+/-5ms), got 166000"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": "T08",
+  "rules_tested": [
+    "R11: SequenceReset-GapFill (123=Y) must obey sequence ordering and cannot jump over missing preceding messages",
+    "R7: Out-of-order GapFill (34=12 > expected 10) triggers ResendRequest (7=10, 16=0) and is queued",
+    "R14: Subsequent resent messages 10 and 11 advance NextTargetMsgSeqNum step-by-step to 12",
+    "R15: Once NextTargetMsgSeqNum reaches 12, queued GapFill (34=12, 36=16) executes and jumps TargetSeq to 16"
+  ],
+  "expert_rationale": "Because GapFillFlag=True (123=Y), the SequenceReset at 34=12 (> expected 10) cannot bypass missing messages 10 and 11. Engine emits ResendRequest(10..0), queues msg 12, processes resent 10 and 11, and then applies the queued 12->16 GapFill to reach NextTargetMsgSeqNum=16.",
+  "outbound_messages": [
+    {
+      "msg_type": "2",
+      "begin_seq_no": 10,
+      "end_seq_no": 0,
+      "send_time_ms": 1000,
+      "msg_seq_num": 5,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 6,
+    "next_target_seq_num": 16,
+    "disconnect_time_ms": null
+  }
+}

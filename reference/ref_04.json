@@ -1,0 +1,31 @@
+{
+  "task_id": "T04",
+  "rules_tested": [
+    "R8: PossDupFlag=Y with MsgSeqNum < NextTargetMsgSeqNum and valid OrigSendingTime is safely ignored",
+    "R9: PossDupFlag=Y missing required OrigSendingTime (122) triggers Session Reject (35=3, 373=1) and advances TargetSeq",
+    "R10: MsgSeqNum < NextTargetMsgSeqNum with PossDupFlag=N triggers immediate fatal Logout (35=5) without advancing TargetSeq"
+  ],
+  "expert_rationale": "Packet 1 (34=18 < 20, PossDup=Y, OrigSendingTime=500) is safely dropped. Packet 2 (34=20, PossDup=Y, OrigSendingTime=None) triggers Reject (35=3, RefSeqNum=20, SessionRejectReason=1) and advances TargetSeq to 21. Packet 3 (34=19 < 21, PossDup=N) triggers fatal Logout (35=5) and disconnects without advancing TargetSeq.",
+  "outbound_messages": [
+    {
+      "msg_type": "3",
+      "ref_seq_num": 20,
+      "session_reject_reason": 1,
+      "send_time_ms": 2000,
+      "msg_seq_num": 10,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "5",
+      "send_time_ms": 3000,
+      "msg_seq_num": 11,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "DISCONNECTED",
+    "next_sender_seq_num": 12,
+    "next_target_seq_num": 21,
+    "disconnect_time_ms": 3000
+  }
+}

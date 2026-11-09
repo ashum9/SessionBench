@@ -1,0 +1,95 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "condition": "with_python_tool",
+  "task_id": "T08",
+  "level": 3,
+  "interacting_rules_count": 4,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T08\",\n  \"title\": \"Non-Contiguous SequenceReset Reception & Replay Stream\",\n  \"description\": \"An active session at NextSenderMsgSeqNum=5 and NextTargetMsgSeqNum=10 receives an inbound SequenceReset (35=4, gap_fill_flag=True, MsgSeqNum=12, NewSeqNo=16) at t=1000ms, followed by inbound NewOrderSingle messages with MsgSeqNum=10 at t=2000ms and MsgSeqNum=11 at t=2500ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 10,\n    \"last_sent_time_ms\": 500,\n    \"last_recv_time_ms\": 500,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1000,\n      \"msg_type\": \"4\",\n      \"msg_seq_num\": 12,\n      \"gap_fill_flag\": true,\n      \"new_seq_no\": 16,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": 800,\n      \"send_time_ms\": 1000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 10,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": 600,\n      \"send_time_ms\": 2000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2500,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 11,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": 700,\n      \"send_time_ms\": 2500\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:34:01.814520+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic:\n# Initial: NextSender=5, NextTarget=10\n# 1. Receive SeqReset (35=4, SeqNum=12, NewSeqNo=16, GapFill=True)\n#    - SeqNum 12 > NextTarget 10. This is a gap.\n#    - Since it is a GapFill (35=4), we process it:\n#    - NextTarget becomes 16.\n#    - We need to request the missing messages (10, 11) via ResendRequest (35=2).\n# 2. Outbound: ResendRequest (Begin=10, End=11)\n# 3. Receive D (SeqNum=10) - Processed (PossDup=True)\n# 4. Receive D (SeqNum=11) - Processed (PossDup=True)\n\n# State transitions:\n# Initial: Target=10\n# Event 1 (SeqReset 12): Gap detected (10-11). \n#   - Send ResendRequest (2) for 10-11.\n#   - Update Target to 16 (per SeqReset).\n# Event 2 (D, SeqNum=10): PossDup=True, ignore sequence check (already requested).\n# Event 3 (D, SeqNum=11): PossDup=True, ignore sequence check.\n\n# Final State:\n# NextSender: 5 (no messages sent by us except ResendRequest)\n# NextTarget: 16\n# Outbound: ResendRequest (35=2, Begin=10, End=11)\n\nprint(\"ResendRequest sent.\")\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 1000,\n      \"begin_seq_num\": 10,\n      \"end_seq_num\": 11\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 6,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 1000,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 6,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation Logic:\n# Initial: NextSender=5, NextTarget=10\n# 1. Receive SeqReset (35=4, SeqNum=12, NewSeqNo=16, GapFill=True)\n#    - SeqNum 12 > NextTarget 10. This is a gap.\n#    - Since it is a GapFill (35=4), we process it:\n#    - NextTarget becomes 16.\n#    - We need to request the missing messages (10, 11) via ResendRequest (35=2).\n# 2. Outbound: ResendRequest (Begin=10, End=11)\n# 3. Receive D (SeqNum=10) - Processed (PossDup=True)\n# 4. Receive D (SeqNum=11) - Processed (PossDup=True)\n\n# State transitions:\n# Initial: Target=10\n# Event 1 (SeqReset 12): Gap detected (10-11). \n#   - Send ResendRequest (2) for 10-11.\n#   - Update Target to 16 (per SeqReset).\n# Event 2 (D, SeqNum=10): PossDup=True, ignore sequence check (already requested).\n# Event 3 (D, SeqNum=11): PossDup=True, ignore sequence check.\n\n# Final State:\n# NextSender: 5 (no messages sent by us except ResendRequest)\n# NextTarget: 16\n# Outbound: ResendRequest (35=2, Begin=10, End=11)\n\nprint(\"ResendRequest sent.\")",
+      "tool_stdout": "ResendRequest sent.",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 17.93,
+      "prompt_tokens": 2791,
+      "completion_tokens": 690,
+      "total_tokens": 3481,
+      "cost_usd": 0.000416
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:34:31.613283+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=5, NextTarget=10\n\n# 1. Event: RECV_MSG (35=4, SeqNum=12, NewSeqNo=16)\n# Target expects 10. Received 12.\n# Gap detected (10, 11).\n# FIX 4.4 Rule: SequenceReset (GapFill=Y) with SeqNum > NextTargetMsgSeqNum \n# triggers a ResendRequest for the missing range [10, 11].\n# The SequenceReset itself is processed (NextTarget becomes 16).\n\n# 2. Event: RECV_MSG (35=D, SeqNum=10)\n# This is part of the replayed stream requested by the ResendRequest.\n# Since it is a PossDup, we process it.\n\n# 3. Event: RECV_MSG (35=D, SeqNum=11)\n# This is part of the replayed stream. Process it.\n\n# Sequence of events:\n# t=1000: Receive 35=4 (SeqNum=12). \n#   - Gap detected: 10 to 11.\n#   - Send ResendRequest (35=2, Begin=10, End=11).\n#   - Update NextTarget to 16 (from NewSeqNo).\n# t=2000: Receive 35=D (SeqNum=10). Processed.\n# t=2500: Receive 35=D (SeqNum=11). Processed.\n\noutbound = [\n    {\n        \"msg_type\": \"2\",\n        \"msg_seq_num\": 5,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 1000,\n        \"begin_seq_no\": 10,\n        \"end_seq_no\": 11\n    }\n]\n\n# Final State:\n# NextSender: 6 (incremented after sending ResendRequest)\n# NextTarget: 16 (updated by SequenceReset)\n# Status: ACTIVE\n\nprint(f\"Outbound: {outbound}\")\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 1000,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 6,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 5,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 1000,\n      \"begin_seq_no\": 10,\n      \"end_seq_no\": 11\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 6,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=5, NextTarget=10\n\n# 1. Event: RECV_MSG (35=4, SeqNum=12, NewSeqNo=16)\n# Target expects 10. Received 12.\n# Gap detected (10, 11).\n# FIX 4.4 Rule: SequenceReset (GapFill=Y) with SeqNum > NextTargetMsgSeqNum \n# triggers a ResendRequest for the missing range [10, 11].\n# The SequenceReset itself is processed (NextTarget becomes 16).\n\n# 2. Event: RECV_MSG (35=D, SeqNum=10)\n# This is part of the replayed stream requested by the ResendRequest.\n# Since it is a PossDup, we process it.\n\n# 3. Event: RECV_MSG (35=D, SeqNum=11)\n# This is part of the replayed stream. Process it.\n\n# Sequence of events:\n# t=1000: Receive 35=4 (SeqNum=12). \n#   - Gap detected: 10 to 11.\n#   - Send ResendRequest (35=2, Begin=10, End=11).\n#   - Update NextTarget to 16 (from NewSeqNo).\n# t=2000: Receive 35=D (SeqNum=10). Processed.\n# t=2500: Receive 35=D (SeqNum=11). Processed.\n\noutbound = [\n    {\n        \"msg_type\": \"2\",\n        \"msg_seq_num\": 5,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 1000,\n        \"begin_seq_no\": 10,\n        \"end_seq_no\": 11\n    }\n]\n\n# Final State:\n# NextSender: 6 (incremented after sending ResendRequest)\n# NextTarget: 16 (updated by SequenceReset)\n# Status: ACTIVE\n\nprint(f\"Outbound: {outbound}\")",
+      "tool_stdout": "Outbound: [{'msg_type': '2', 'msg_seq_num': 5, 'poss_dup_flag': False, 'send_time_ms': 1000, 'begin_seq_no': 10, 'end_seq_no': 11}]",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 29.3,
+      "prompt_tokens": 2978,
+      "completion_tokens": 817,
+      "total_tokens": 3795,
+      "cost_usd": 0.000468
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:37:11.362217+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=5, NextTarget=10\n\n# Event 1: RECV_MSG (35=4, SeqNum=12, NewSeqNo=16)\n# Logic: \n# 1. MsgSeqNum (12) > NextTarget (10). Gap detected.\n# 2. Since it is a SequenceReset (GapFill=True), we process it.\n# 3. Update NextTarget to NewSeqNo (16).\n# 4. No outbound message required for SequenceReset (GapFill=True).\n\n# Event 2: RECV_MSG (35=D, SeqNum=10)\n# Logic:\n# 1. MsgSeqNum (10) < NextTarget (16).\n# 2. PossDupFlag is True.\n# 3. Protocol dictates: If PossDupFlag is True and SeqNum < NextTarget, ignore the message.\n\n# Event 3: RECV_MSG (35=D, SeqNum=11)\n# Logic:\n# 1. MsgSeqNum (11) < NextTarget (16).\n# 2. PossDupFlag is True.\n# 3. Protocol dictates: If PossDupFlag is True and SeqNum < NextTarget, ignore the message.\n\n# Final State:\n# Status: ACTIVE\n# NextSender: 5\n# NextTarget: 16\n\nprint(\"Simulation complete.\")\n```\n\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 16,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=5, NextTarget=10\n\n# Event 1: RECV_MSG (35=4, SeqNum=12, NewSeqNo=16)\n# Logic: \n# 1. MsgSeqNum (12) > NextTarget (10). Gap detected.\n# 2. Since it is a SequenceReset (GapFill=True), we process it.\n# 3. Update NextTarget to NewSeqNo (16).\n# 4. No outbound message required for SequenceReset (GapFill=True).\n\n# Event 2: RECV_MSG (35=D, SeqNum=10)\n# Logic:\n# 1. MsgSeqNum (10) < NextTarget (16).\n# 2. PossDupFlag is True.\n# 3. Protocol dictates: If PossDupFlag is True and SeqNum < NextTarget, ignore the message.\n\n# Event 3: RECV_MSG (35=D, SeqNum=11)\n# Logic:\n# 1. MsgSeqNum (11) < NextTarget (16).\n# 2. PossDupFlag is True.\n# 3. Protocol dictates: If PossDupFlag is True and SeqNum < NextTarget, ignore the message.\n\n# Final State:\n# Status: ACTIVE\n# NextSender: 5\n# NextTarget: 16\n\nprint(\"Simulation complete.\")",
+      "tool_stdout": "Simulation complete.",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 159.24,
+      "prompt_tokens": 2658,
+      "completion_tokens": 477,
+      "total_tokens": 3135,
+      "cost_usd": 0.000342
+    }
+  ]
+}

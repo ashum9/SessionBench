@@ -1,0 +1,62 @@
+{
+  "task_id": "T07",
+  "filename": "task_07_dueling_resend_collision.json",
+  "ref_filename": "ref_07.json",
+  "level": 3,
+  "interacting_rules_count": 4,
+  "title": "Concurrent Bidirectional Sequence Gaps & Recovery",
+  "description": "An active session with send_redundant_resend_requests=False, NextSenderMsgSeqNum=12, and NextTargetMsgSeqNum=20 receives an inbound order (34=22) at t=1000ms, an inbound ResendRequest (34=23, BeginSeqNo=10, EndSeqNo=11) at t=1500ms, and an inbound SequenceReset (34=20, NewSeqNo=22) at t=2000ms.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 12,
+    "next_target_seq_num": 20,
+    "last_sent_time_ms": 500,
+    "last_recv_time_ms": 500,
+    "outbound_messages_store": [
+      {
+        "msg_seq_num": 10,
+        "msg_type": "0",
+        "send_time_ms": 200
+      },
+      {
+        "msg_seq_num": 11,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-11",
+        "send_time_ms": 400
+      }
+    ]
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 1000,
+      "msg_type": "D",
+      "msg_seq_num": 22,
+      "send_time_ms": 1000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 1500,
+      "msg_type": "2",
+      "msg_seq_num": 23,
+      "begin_seq_no": 10,
+      "end_seq_no": 11,
+      "send_time_ms": 1500
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2000,
+      "msg_type": "4",
+      "msg_seq_num": 20,
+      "gap_fill_flag": true,
+      "new_seq_no": 22,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 1800,
+      "send_time_ms": 2000
+    }
+  ]
+}

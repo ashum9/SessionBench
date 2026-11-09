@@ -1,0 +1,173 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "condition": "no_tools",
+  "task_id": "T10",
+  "level": 3,
+  "interacting_rules_count": 5,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T10\",\n  \"title\": \"Unclean Transport Disconnect, Penalty Cooldown & Sequence Reset\",\n  \"description\": \"An active session with heart_bt_int_ms=30000 and unclean_drop_lockout_multiplier=2 experiences an unclean TCP_DROP at t=100000ms, followed by reconnection attempts at t=125000ms and t=161000ms, an inbound Logon at t=161100ms, and a new order submission at t=162000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"unclean_drop_lockout_multiplier\": 2,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 45,\n    \"next_target_seq_num\": 60,\n    \"last_sent_time_ms\": 95000,\n    \"last_recv_time_ms\": 95000,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"TCP_DROP\",\n      \"timestamp_ms\": 100000,\n      \"clean\": false\n    },\n    {\n      \"event_type\": \"RECONNECT_ATTEMPT\",\n      \"timestamp_ms\": 125000,\n      \"reset_seq_num_flag\": false\n    },\n    {\n      \"event_type\": \"RECONNECT_ATTEMPT\",\n      \"timestamp_ms\": 161000,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 161100,\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"reset_seq_num_flag\": true,\n      \"send_time_ms\": 161100\n    },\n    {\n      \"event_type\": \"SEND_ORDER\",\n      \"timestamp_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:29:40.578170+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 45,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 46,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 47,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 45,
+            "poss_dup_flag": false,
+            "send_time_ms": 161100,
+            "reset_seq_num_flag": true
+          },
+          {
+            "msg_type": "D",
+            "msg_seq_num": 46,
+            "poss_dup_flag": false,
+            "send_time_ms": 162000,
+            "cl_ord_id": "ORD-POST-RESET-1"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 47,
+          "next_target_seq_num": 2,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.5167,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.6667
+        },
+        "diff_reasons": [
+          "msg[0] msg_seq_num mismatch: expected 1, got 45",
+          "msg[1] msg_seq_num mismatch: expected 2, got 46",
+          "final_state.next_sender_seq_num mismatch: expected 3, got 47",
+          "msg[0] send_time_ms mismatch: expected 161000 (+/-5ms), got 161100"
+        ]
+      },
+      "latency_sec": 33.26,
+      "prompt_tokens": 1046,
+      "completion_tokens": 217,
+      "total_tokens": 1263,
+      "cost_usd": 0.000144
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:29:42.658044+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 45,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 46,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 47,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 45,
+            "poss_dup_flag": false,
+            "send_time_ms": 161100,
+            "reset_seq_num_flag": true
+          },
+          {
+            "msg_type": "D",
+            "msg_seq_num": 46,
+            "poss_dup_flag": false,
+            "send_time_ms": 162000,
+            "cl_ord_id": "ORD-POST-RESET-1"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 47,
+          "next_target_seq_num": 2,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.5167,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.6667
+        },
+        "diff_reasons": [
+          "msg[0] msg_seq_num mismatch: expected 1, got 45",
+          "msg[1] msg_seq_num mismatch: expected 2, got 46",
+          "final_state.next_sender_seq_num mismatch: expected 3, got 47",
+          "msg[0] send_time_ms mismatch: expected 161000 (+/-5ms), got 161100"
+        ]
+      },
+      "latency_sec": 1.57,
+      "prompt_tokens": 1046,
+      "completion_tokens": 217,
+      "total_tokens": 1263,
+      "cost_usd": 0.000144
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:29:50.205177+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 45,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 46,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 47,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": null,
+      "tool_stdout": null,
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 45,
+            "poss_dup_flag": false,
+            "send_time_ms": 161100,
+            "reset_seq_num_flag": true
+          },
+          {
+            "msg_type": "D",
+            "msg_seq_num": 46,
+            "poss_dup_flag": false,
+            "send_time_ms": 162000,
+            "cl_ord_id": "ORD-POST-RESET-1"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 47,
+          "next_target_seq_num": 2,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.5167,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.6667
+        },
+        "diff_reasons": [
+          "msg[0] msg_seq_num mismatch: expected 1, got 45",
+          "msg[1] msg_seq_num mismatch: expected 2, got 46",
+          "final_state.next_sender_seq_num mismatch: expected 3, got 47",
+          "msg[0] send_time_ms mismatch: expected 161000 (+/-5ms), got 161100"
+        ]
+      },
+      "latency_sec": 7.04,
+      "prompt_tokens": 1046,
+      "completion_tokens": 217,
+      "total_tokens": 1263,
+      "cost_usd": 0.000144
+    }
+  ]
+}

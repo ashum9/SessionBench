@@ -1,0 +1,33 @@
+{
+  "task_id": "T10",
+  "rules_tested": [
+    "R21: Unclean TCP_DROP without Logout triggers 2 * HeartBtInt (60000ms) SenderCompID lockout (status=LOCKED_OUT)",
+    "R22: Premature RECONNECT_ATTEMPT during lockout window is rejected without advancing sequence numbers",
+    "R23: Post-lockout RECONNECT_ATTEMPT with ResetSeqNumFlag=Y (141=Y) resets NextSenderMsgSeqNum and NextTargetMsgSeqNum to 1",
+    "R24: Inbound Logon (35=A, 34=1, 141=Y) transitions session back to ACTIVE and clears disconnect_time_ms",
+    "R5: Subsequent outbound NewOrderSingle (35=D) transmits at MsgSeqNum=2"
+  ],
+  "expert_rationale": "Unclean TCP_DROP at t=100000ms locks out SenderCompID for 2 * 30000ms = 60000ms (until 160000ms). Reconnect at t=125000ms is ignored. Reconnect at t=161000ms with reset_seq_num_flag=True resets both sequences to 1 and emits Logon (34=1, 141=Y), followed by NewOrderSingle at 34=2.",
+  "outbound_messages": [
+    {
+      "msg_type": "A",
+      "reset_seq_num_flag": true,
+      "send_time_ms": 161000,
+      "msg_seq_num": 1,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "D",
+      "cl_ord_id": "ORD-POST-RESET-1",
+      "send_time_ms": 162000,
+      "msg_seq_num": 2,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 3,
+    "next_target_seq_num": 2,
+    "disconnect_time_ms": null
+  }
+}

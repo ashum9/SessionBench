@@ -1,0 +1,41 @@
+{
+  "task_id": "T07",
+  "rules_tested": [
+    "R7: Inbound sequence gap (34=22 > expected 20) triggers ResendRequest (7=20, 16=0) and RESENDING state",
+    "R14: SendRedundantResendRequests=False suppresses duplicate ResendRequest when 34=23 arrives during RESENDING",
+    "R1: Counterparty ResendRequest (34=23) is serviced immediately during bidirectional gap to prevent deadlock",
+    "R15: Inbound GapFill (34=20, 36=22) resolves gap and drains queued messages 22 and 23 to advance TargetSeq to 24"
+  ],
+  "expert_rationale": "Msg 34=22 at t=1000ms triggers ResendRequest(20..0). Msg 34=23 (ResendRequest 10..11) at t=1500ms does not trigger a redundant ResendRequest, but is serviced immediately (GapFill 10->11, Order 11). At t=2000ms, GapFill (34=20, 36=22) arrives and drains queued 22 and 23 -> TargetSeq=24, status=ACTIVE.",
+  "outbound_messages": [
+    {
+      "msg_type": "2",
+      "begin_seq_no": 20,
+      "end_seq_no": 0,
+      "send_time_ms": 1000,
+      "msg_seq_num": 12,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "4",
+      "msg_seq_num": 10,
+      "poss_dup_flag": true,
+      "gap_fill_flag": true,
+      "new_seq_no": 11,
+      "send_time_ms": 1500
+    },
+    {
+      "msg_type": "D",
+      "msg_seq_num": 11,
+      "poss_dup_flag": true,
+      "send_time_ms": 1500,
+      "cl_ord_id": "ORD-11"
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 13,
+    "next_target_seq_num": 24,
+    "disconnect_time_ms": null
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "condition": "with_python_tool",
+  "task_id": "T04",
+  "level": 2,
+  "interacting_rules_count": 3,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T04\",\n  \"title\": \"Inbound Sequence Anomalies & Header Validation\",\n  \"description\": \"An active session at NextSenderMsgSeqNum=10 and NextTargetMsgSeqNum=20 receives three consecutive inbound NewOrderSingle (35=D) messages at t=1000ms, t=2000ms, and t=3000ms with varying sequence numbers and header flags.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 20,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 1000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 18,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": 500,\n      \"send_time_ms\": 1000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 2000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 20,\n      \"poss_dup_flag\": true,\n      \"orig_sending_time_ms\": null,\n      \"send_time_ms\": 2000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 3000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 19,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 3000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:30:43.947577+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic for FIX 4.4 Session Trace\n# Initial State: NextSender=10, NextTarget=20\n\n# Event 1: t=1000, MsgType=D, SeqNum=18 (PossDup=True)\n# Expected: 20, Received: 18. 18 < 20.\n# Since PossDup=True, we ignore the sequence number mismatch and process the message.\n# NextTarget remains 20.\n\n# Event 2: t=2000, MsgType=D, SeqNum=20 (PossDup=True)\n# Expected: 20, Received: 20. Match.\n# Process message. NextTarget becomes 21.\n\n# Event 3: t=3000, MsgType=D, SeqNum=19 (PossDup=False)\n# Expected: 21, Received: 19. 19 < 21.\n# PossDup=False. This is a sequence gap/error.\n# FIX 4.4 protocol: If SeqNum < Expected and PossDup=False, terminate session.\n# Status -> DISCONNECTED.\n\noutbound = []\nstate = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 20,\n    \"disconnect_time_ms\": None\n}\n\n# Process Event 1\n# SeqNum 18 < 20, PossDup=True -> Accept\nstate[\"next_target_seq_num\"] = 20\n\n# Process Event 2\n# SeqNum 20 == 20 -> Accept\nstate[\"next_target_seq_num\"] = 21\n\n# Process Event 3\n# SeqNum 19 < 21, PossDup=False -> Error\nstate[\"status\"] = \"DISCONNECTED\"\nstate[\"disconnect_time_ms\"] = 3000\n\nprint(f\"Final State: {state}\")\n```\n\n```json\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n  }\n}\n```\n\n{\n  \"outbound_messages\": [],\n  \"final_state\": {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n  }\n}",
+      "tool_call_python": "# Simulation Logic for FIX 4.4 Session Trace\n# Initial State: NextSender=10, NextTarget=20\n\n# Event 1: t=1000, MsgType=D, SeqNum=18 (PossDup=True)\n# Expected: 20, Received: 18. 18 < 20.\n# Since PossDup=True, we ignore the sequence number mismatch and process the message.\n# NextTarget remains 20.\n\n# Event 2: t=2000, MsgType=D, SeqNum=20 (PossDup=True)\n# Expected: 20, Received: 20. Match.\n# Process message. NextTarget becomes 21.\n\n# Event 3: t=3000, MsgType=D, SeqNum=19 (PossDup=False)\n# Expected: 21, Received: 19. 19 < 21.\n# PossDup=False. This is a sequence gap/error.\n# FIX 4.4 protocol: If SeqNum < Expected and PossDup=False, terminate session.\n# Status -> DISCONNECTED.\n\noutbound = []\nstate = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 20,\n    \"disconnect_time_ms\": None\n}\n\n# Process Event 1\n# SeqNum 18 < 20, PossDup=True -> Accept\nstate[\"next_target_seq_num\"] = 20\n\n# Process Event 2\n# SeqNum 20 == 20 -> Accept\nstate[\"next_target_seq_num\"] = 21\n\n# Process Event 3\n# SeqNum 19 < 21, PossDup=False -> Error\nstate[\"status\"] = \"DISCONNECTED\"\nstate[\"disconnect_time_ms\"] = 3000\n\nprint(f\"Final State: {state}\")",
+      "tool_stdout": "Final State: {'status': 'DISCONNECTED', 'next_sender_seq_num': 10, 'next_target_seq_num': 21, 'disconnect_time_ms': 3000}",
+      "model_output": {
+        "outbound_messages": [],
+        "final_state": {
+          "status": "DISCONNECTED",
+          "next_sender_seq_num": 10,
+          "next_target_seq_num": 21,
+          "disconnect_time_ms": 3000
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.2167,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.3333
+        },
+        "diff_reasons": [
+          "outbound_messages count mismatch: expected 2, got 0",
+          "final_state.next_sender_seq_num mismatch: expected 12, got 10"
+        ]
+      },
+      "latency_sec": 4.05,
+      "prompt_tokens": 2673,
+      "completion_tokens": 614,
+      "total_tokens": 3287,
+      "cost_usd": 0.000385
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:31:01.519156+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for FIX 4.4 Session State\n# Initial: NextSender=10, NextTarget=20\n\n# Event 1: RECV_MSG (D), SeqNum=18, PossDup=True\n# Expected: 20. Actual: 18. \n# Since PossDup=True and SeqNum < NextTarget (18 < 20), ignore (duplicate).\n# NextTarget remains 20.\n\n# Event 2: RECV_MSG (D), SeqNum=20, PossDup=True\n# Expected: 20. Actual: 20.\n# Match! Process message.\n# NextTarget increments to 21.\n\n# Event 3: RECV_MSG (D), SeqNum=19, PossDup=False\n# Expected: 21. Actual: 19.\n# Gap detected (19 < 21).\n# Since PossDup=False, this is a sequence error.\n# Send ResendRequest (35=2) for range 21 to infinity (or 21-21).\n# Session status becomes RESENDING.\n\nstate = {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": None\n}\n\noutbound = [\n    {\n        \"msg_type\": \"2\",\n        \"msg_seq_num\": 10,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 3000,\n        \"begin_seq_no\": 21,\n        \"end_seq_no\": 0\n    }\n]\n\nprint(f\"State: {state}\")\nprint(f\"Outbound: {outbound}\")\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 10,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 3000,\n      \"begin_seq_no\": 21,\n      \"end_seq_no\": 0\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"2\",\n      \"msg_seq_num\": 10,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 3000,\n      \"begin_seq_no\": 21,\n      \"end_seq_no\": 0\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for FIX 4.4 Session State\n# Initial: NextSender=10, NextTarget=20\n\n# Event 1: RECV_MSG (D), SeqNum=18, PossDup=True\n# Expected: 20. Actual: 18. \n# Since PossDup=True and SeqNum < NextTarget (18 < 20), ignore (duplicate).\n# NextTarget remains 20.\n\n# Event 2: RECV_MSG (D), SeqNum=20, PossDup=True\n# Expected: 20. Actual: 20.\n# Match! Process message.\n# NextTarget increments to 21.\n\n# Event 3: RECV_MSG (D), SeqNum=19, PossDup=False\n# Expected: 21. Actual: 19.\n# Gap detected (19 < 21).\n# Since PossDup=False, this is a sequence error.\n# Send ResendRequest (35=2) for range 21 to infinity (or 21-21).\n# Session status becomes RESENDING.\n\nstate = {\n    \"status\": \"RESENDING\",\n    \"next_sender_seq_num\": 10,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": None\n}\n\noutbound = [\n    {\n        \"msg_type\": \"2\",\n        \"msg_seq_num\": 10,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 3000,\n        \"begin_seq_no\": 21,\n        \"end_seq_no\": 0\n    }\n]\n\nprint(f\"State: {state}\")\nprint(f\"Outbound: {outbound}\")",
+      "tool_stdout": "State: {'status': 'RESENDING', 'next_sender_seq_num': 10, 'next_target_seq_num': 21, 'disconnect_time_ms': None}\nOutbound: [{'msg_type': '2', 'msg_seq_num': 10, 'poss_dup_flag': False, 'send_time_ms': 3000, 'begin_seq_no': 21, 'end_seq_no': 0}]",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 17.07,
+      "prompt_tokens": 2770,
+      "completion_tokens": 728,
+      "total_tokens": 3498,
+      "cost_usd": 0.000426
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:31:14.894272+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=10, NextTarget=20\n\n# Event 1: t=1000, msg_seq_num=18 (Gap detected: expected 20, got 18)\n# Since 18 < 20 and PossDupFlag=true, we ignore it (duplicate/retransmission of old message).\n# State remains: NextSender=10, NextTarget=20\n\n# Event 2: t=2000, msg_seq_num=20 (Expected)\n# Processed. NextTarget becomes 21.\n# State: NextSender=10, NextTarget=21\n\n# Event 3: t=3000, msg_seq_num=19 (Gap detected: expected 21, got 19)\n# 19 < 21 and PossDupFlag=false. \n# According to FIX 4.4 Vol 2, Section 4.4: \n# If MsgSeqNum < Expected and PossDupFlag=false, the session must be terminated (Logout or Disconnect).\n# We will trigger a Logout (msg_type=5) and disconnect.\n\noutbound = [\n    {\n        \"msg_type\": \"5\",\n        \"msg_seq_num\": 10,\n        \"poss_dup_flag\": false,\n        \"send_time_ms\": 3000\n    }\n]\n\nfinal_state = {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"5\",\n      \"msg_seq_num\": 10,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 3000\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"5\",\n      \"msg_seq_num\": 10,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 3000\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n  }\n}",
+      "tool_call_python": "# Simulation logic for FIX 4.4 Session State Machine\n# Initial State: NextSender=10, NextTarget=20\n\n# Event 1: t=1000, msg_seq_num=18 (Gap detected: expected 20, got 18)\n# Since 18 < 20 and PossDupFlag=true, we ignore it (duplicate/retransmission of old message).\n# State remains: NextSender=10, NextTarget=20\n\n# Event 2: t=2000, msg_seq_num=20 (Expected)\n# Processed. NextTarget becomes 21.\n# State: NextSender=10, NextTarget=21\n\n# Event 3: t=3000, msg_seq_num=19 (Gap detected: expected 21, got 19)\n# 19 < 21 and PossDupFlag=false. \n# According to FIX 4.4 Vol 2, Section 4.4: \n# If MsgSeqNum < Expected and PossDupFlag=false, the session must be terminated (Logout or Disconnect).\n# We will trigger a Logout (msg_type=5) and disconnect.\n\noutbound = [\n    {\n        \"msg_type\": \"5\",\n        \"msg_seq_num\": 10,\n        \"poss_dup_flag\": false,\n        \"send_time_ms\": 3000\n    }\n]\n\nfinal_state = {\n    \"status\": \"DISCONNECTED\",\n    \"next_sender_seq_num\": 11,\n    \"next_target_seq_num\": 21,\n    \"disconnect_time_ms\": 3000\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound, \"final_state\": final_state}))",
+      "tool_stdout": "STDERR:\nTraceback (most recent call last):\n  File \"/var/folders/0r/x6pllpbd4kvchh_sw5gb75ph0000gn/T/tmp__acuvcr.py\", line 22, in <module>\n    \"poss_dup_flag\": false,\n                     ^^^^^\nNameError: name 'false' is not defined. Did you mean: 'False'?",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 12.87,
+      "prompt_tokens": 2744,
+      "completion_tokens": 694,
+      "total_tokens": 3438,
+      "cost_usd": 0.000414
+    }
+  ]
+}

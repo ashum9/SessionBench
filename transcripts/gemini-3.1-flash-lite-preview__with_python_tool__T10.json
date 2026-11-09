@@ -1,0 +1,120 @@
+{
+  "model": "gemini-3.1-flash-lite-preview",
+  "condition": "with_python_tool",
+  "task_id": "T10",
+  "level": 3,
+  "interacting_rules_count": 5,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T10\",\n  \"title\": \"Unclean Transport Disconnect, Penalty Cooldown & Sequence Reset\",\n  \"description\": \"An active session with heart_bt_int_ms=30000 and unclean_drop_lockout_multiplier=2 experiences an unclean TCP_DROP at t=100000ms, followed by reconnection attempts at t=125000ms and t=161000ms, an inbound Logon at t=161100ms, and a new order submission at t=162000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"unclean_drop_lockout_multiplier\": 2,\n    \"send_redundant_resend_requests\": false\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 45,\n    \"next_target_seq_num\": 60,\n    \"last_sent_time_ms\": 95000,\n    \"last_recv_time_ms\": 95000,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"TCP_DROP\",\n      \"timestamp_ms\": 100000,\n      \"clean\": false\n    },\n    {\n      \"event_type\": \"RECONNECT_ATTEMPT\",\n      \"timestamp_ms\": 125000,\n      \"reset_seq_num_flag\": false\n    },\n    {\n      \"event_type\": \"RECONNECT_ATTEMPT\",\n      \"timestamp_ms\": 161000,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 161100,\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"reset_seq_num_flag\": true,\n      \"send_time_ms\": 161100\n    },\n    {\n      \"event_type\": \"SEND_ORDER\",\n      \"timestamp_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:28:10.167493+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation logic for T10\n# 1. Initial State: ACTIVE, next_sender_seq_num=45, next_target_seq_num=60\n# 2. TCP_DROP at 100000ms (unclean):\n#    - Lockout duration = heart_bt_int_ms * multiplier = 30000 * 2 = 60000ms.\n#    - Lockout ends at 100000 + 60000 = 160000ms.\n# 3. RECONNECT_ATTEMPT at 125000ms:\n#    - 125000 < 160000, so this is rejected (LOCKED_OUT).\n# 4. RECONNECT_ATTEMPT at 161000ms:\n#    - 161000 > 160000, session transitions to DISCONNECTED (ready for Logon).\n# 5. RECV_MSG (Logon) at 161100ms:\n#    - reset_seq_num_flag=true, so next_sender_seq_num=1, next_target_seq_num=2.\n#    - Outbound: Logon (A), seq=1, reset_seq_num_flag=true.\n# 6. SEND_ORDER at 162000ms:\n#    - Outbound: NewOrderSingle (D), seq=2, cl_ord_id=\"ORD-POST-RESET-1\".\n\noutbound_messages = [\n    {\n        \"msg_type\": \"A\",\n        \"msg_seq_num\": 1,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 161100,\n        \"reset_seq_num_flag\": True\n    },\n    {\n        \"msg_type\": \"D\",\n        \"msg_seq_num\": 2,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 162000,\n        \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 2,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 2,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation logic for T10\n# 1. Initial State: ACTIVE, next_sender_seq_num=45, next_target_seq_num=60\n# 2. TCP_DROP at 100000ms (unclean):\n#    - Lockout duration = heart_bt_int_ms * multiplier = 30000 * 2 = 60000ms.\n#    - Lockout ends at 100000 + 60000 = 160000ms.\n# 3. RECONNECT_ATTEMPT at 125000ms:\n#    - 125000 < 160000, so this is rejected (LOCKED_OUT).\n# 4. RECONNECT_ATTEMPT at 161000ms:\n#    - 161000 > 160000, session transitions to DISCONNECTED (ready for Logon).\n# 5. RECV_MSG (Logon) at 161100ms:\n#    - reset_seq_num_flag=true, so next_sender_seq_num=1, next_target_seq_num=2.\n#    - Outbound: Logon (A), seq=1, reset_seq_num_flag=true.\n# 6. SEND_ORDER at 162000ms:\n#    - Outbound: NewOrderSingle (D), seq=2, cl_ord_id=\"ORD-POST-RESET-1\".\n\noutbound_messages = [\n    {\n        \"msg_type\": \"A\",\n        \"msg_seq_num\": 1,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 161100,\n        \"reset_seq_num_flag\": True\n    },\n    {\n        \"msg_type\": \"D\",\n        \"msg_seq_num\": 2,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 162000,\n        \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))",
+      "tool_stdout": "{\"outbound_messages\": [{\"msg_type\": \"A\", \"msg_seq_num\": 1, \"poss_dup_flag\": false, \"send_time_ms\": 161100, \"reset_seq_num_flag\": true}, {\"msg_type\": \"D\", \"msg_seq_num\": 2, \"poss_dup_flag\": false, \"send_time_ms\": 162000, \"cl_ord_id\": \"ORD-POST-RESET-1\"}], \"final_state\": {\"status\": \"ACTIVE\", \"next_sender_seq_num\": 3, \"next_target_seq_num\": 2, \"disconnect_time_ms\": null}}",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 67.07,
+      "prompt_tokens": 3180,
+      "completion_tokens": 1026,
+      "total_tokens": 4206,
+      "cost_usd": 0.000546
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:28:16.210256+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic:\n# 1. Initial State: ACTIVE, S=45, T=60.\n# 2. t=100000: TCP_DROP (unclean). Lockout = heart_bt_int * multiplier = 30000 * 2 = 60000ms.\n#    Lockout ends at 100000 + 60000 = 160000ms.\n# 3. t=125000: RECONNECT_ATTEMPT. Current time 125000 < 160000. Status: LOCKED_OUT.\n# 4. t=161000: RECONNECT_ATTEMPT. Current time 161000 > 160000. Status: DISCONNECTED (Ready for Logon).\n# 5. t=161100: RECV_MSG (Logon, reset_seq_num_flag=true).\n#    - Reset local state: S=1, T=2.\n#    - Send Logon (A) with reset_seq_num_flag=true.\n# 6. t=162000: SEND_ORDER (D). S increments to 2.\n\n# Sequence of events:\n# 1. Logon (A) at 161100: S=1, reset_seq_num_flag=true.\n# 2. New Order (D) at 162000: S=2, cl_ord_id=\"ORD-POST-RESET-1\".\n\noutbound_messages = [\n    {\n        \"msg_type\": \"A\",\n        \"msg_seq_num\": 1,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 161100,\n        \"reset_seq_num_flag\": True\n    },\n    {\n        \"msg_type\": \"D\",\n        \"msg_seq_num\": 2,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 162000,\n        \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 2,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 2,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation Logic:\n# 1. Initial State: ACTIVE, S=45, T=60.\n# 2. t=100000: TCP_DROP (unclean). Lockout = heart_bt_int * multiplier = 30000 * 2 = 60000ms.\n#    Lockout ends at 100000 + 60000 = 160000ms.\n# 3. t=125000: RECONNECT_ATTEMPT. Current time 125000 < 160000. Status: LOCKED_OUT.\n# 4. t=161000: RECONNECT_ATTEMPT. Current time 161000 > 160000. Status: DISCONNECTED (Ready for Logon).\n# 5. t=161100: RECV_MSG (Logon, reset_seq_num_flag=true).\n#    - Reset local state: S=1, T=2.\n#    - Send Logon (A) with reset_seq_num_flag=true.\n# 6. t=162000: SEND_ORDER (D). S increments to 2.\n\n# Sequence of events:\n# 1. Logon (A) at 161100: S=1, reset_seq_num_flag=true.\n# 2. New Order (D) at 162000: S=2, cl_ord_id=\"ORD-POST-RESET-1\".\n\noutbound_messages = [\n    {\n        \"msg_type\": \"A\",\n        \"msg_seq_num\": 1,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 161100,\n        \"reset_seq_num_flag\": True\n    },\n    {\n        \"msg_type\": \"D\",\n        \"msg_seq_num\": 2,\n        \"poss_dup_flag\": False,\n        \"send_time_ms\": 162000,\n        \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n]\n\nfinal_state = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 3,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": None\n}\n\nimport json\nprint(json.dumps({\"outbound_messages\": outbound_messages, \"final_state\": final_state}))",
+      "tool_stdout": "{\"outbound_messages\": [{\"msg_type\": \"A\", \"msg_seq_num\": 1, \"poss_dup_flag\": false, \"send_time_ms\": 161100, \"reset_seq_num_flag\": true}, {\"msg_type\": \"D\", \"msg_seq_num\": 2, \"poss_dup_flag\": false, \"send_time_ms\": 162000, \"cl_ord_id\": \"ORD-POST-RESET-1\"}], \"final_state\": {\"status\": \"ACTIVE\", \"next_sender_seq_num\": 3, \"next_target_seq_num\": 2, \"disconnect_time_ms\": null}}",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 5.54,
+      "prompt_tokens": 3186,
+      "completion_tokens": 1032,
+      "total_tokens": 4218,
+      "cost_usd": 0.000549
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:28:21.216707+00:00",
+      "model_version": "gemini-3.1-flash-lite",
+      "reasoning_trace": "```python\n# Simulation Logic:\n# 1. Initial State: ACTIVE, S=45, T=60.\n# 2. t=100000: TCP_DROP (unclean). Lockout = heart_bt_int * 2 = 60000ms.\n#    Lockout ends at 100000 + 60000 = 160000ms.\n# 3. t=125000: RECONNECT_ATTEMPT. Current time 125000 < 160000. \n#    Session remains DISCONNECTED (LOCKED_OUT).\n# 4. t=161000: RECONNECT_ATTEMPT. Current time 161000 > 160000.\n#    Session transitions to ACTIVE (waiting for Logon).\n# 5. t=161100: RECV_MSG (Logon, reset_seq_num_flag=true).\n#    Engine resets state: next_sender_seq_num = 1, next_target_seq_num = 2.\n#    Engine sends Logon (A) with reset_seq_num_flag=true.\n# 6. t=162000: SEND_ORDER (D).\n#    Engine sends NewOrderSingle (D), seq_num = 1, next_sender_seq_num becomes 2.\n\n# Final State Calculation:\n# next_sender_seq_num: 2\n# next_target_seq_num: 2\n# status: ACTIVE\n\nprint(\"Simulation complete.\")\n```\n\n```json\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 2,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}\n```\n\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"A\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 161100,\n      \"reset_seq_num_flag\": true\n    },\n    {\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 1,\n      \"poss_dup_flag\": false,\n      \"send_time_ms\": 162000,\n      \"cl_ord_id\": \"ORD-POST-RESET-1\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 2,\n    \"next_target_seq_num\": 2,\n    \"disconnect_time_ms\": null\n  }\n}",
+      "tool_call_python": "# Simulation Logic:\n# 1. Initial State: ACTIVE, S=45, T=60.\n# 2. t=100000: TCP_DROP (unclean). Lockout = heart_bt_int * 2 = 60000ms.\n#    Lockout ends at 100000 + 60000 = 160000ms.\n# 3. t=125000: RECONNECT_ATTEMPT. Current time 125000 < 160000. \n#    Session remains DISCONNECTED (LOCKED_OUT).\n# 4. t=161000: RECONNECT_ATTEMPT. Current time 161000 > 160000.\n#    Session transitions to ACTIVE (waiting for Logon).\n# 5. t=161100: RECV_MSG (Logon, reset_seq_num_flag=true).\n#    Engine resets state: next_sender_seq_num = 1, next_target_seq_num = 2.\n#    Engine sends Logon (A) with reset_seq_num_flag=true.\n# 6. t=162000: SEND_ORDER (D).\n#    Engine sends NewOrderSingle (D), seq_num = 1, next_sender_seq_num becomes 2.\n\n# Final State Calculation:\n# next_sender_seq_num: 2\n# next_target_seq_num: 2\n# status: ACTIVE\n\nprint(\"Simulation complete.\")",
+      "tool_stdout": "Simulation complete.",
+      "model_output": {
+        "outbound_messages": [
+          {
+            "msg_type": "A",
+            "msg_seq_num": 1,
+            "poss_dup_flag": false,
+            "send_time_ms": 161100,
+            "reset_seq_num_flag": true
+          },
+          {
+            "msg_type": "D",
+            "msg_seq_num": 1,
+            "poss_dup_flag": false,
+            "send_time_ms": 162000,
+            "cl_ord_id": "ORD-POST-RESET-1"
+          }
+        ],
+        "final_state": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 2,
+          "next_target_seq_num": 2,
+          "disconnect_time_ms": null
+        }
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.6917,
+        "sub_scores": {
+          "msg_type_sequence_score": 1.0,
+          "seq_num_and_flags_score": 0.5,
+          "final_state_score": 0.6667,
+          "timing_and_reject_score": 0.6667
+        },
+        "diff_reasons": [
+          "msg[1] msg_seq_num mismatch: expected 2, got 1",
+          "final_state.next_sender_seq_num mismatch: expected 3, got 2",
+          "msg[0] send_time_ms mismatch: expected 161000 (+/-5ms), got 161100"
+        ]
+      },
+      "latency_sec": 4.5,
+      "prompt_tokens": 2803,
+      "completion_tokens": 808,
+      "total_tokens": 3611,
+      "cost_usd": 0.000453
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "model": "gemini-flash-lite-latest",
+  "condition": "with_python_tool",
+  "task_id": "T02",
+  "level": 1,
+  "interacting_rules_count": 2,
+  "system_prompt": "You are a FIX 4.4 protocol engine and FinGate Session Shield state machine simulator.\nGiven a JSON task specification containing `engine_config`, `initial_store`, and an ordered `inbound_event_trace`, compute the exact sequence of outbound wire messages and the final session state.\n\nReturn a valid JSON object matching this exact schema:\n{\n  \"outbound_messages\": [\n    {\n      \"msg_type\": \"<string: 0,1,2,3,4,5,A,D,F>\",\n      \"msg_seq_num\": <int>,\n      \"poss_dup_flag\": <bool>,\n      \"send_time_ms\": <int>,\n      \"gap_fill_flag\": <bool, include when msg_type==\"4\">,\n      \"new_seq_no\": <int, include when msg_type==\"4\">,\n      \"begin_seq_no\": <int, include when msg_type==\"2\">,\n      \"end_seq_no\": <int, include when msg_type==\"2\">,\n      \"ref_seq_num\": <int, include when msg_type==\"3\">,\n      \"session_reject_reason\": <int, include when msg_type==\"3\">,\n      \"reset_seq_num_flag\": <bool, include when msg_type==\"A\" and reset is performed>,\n      \"test_req_id\": \"<string, include when echoing a TestRequest>\",\n      \"cl_ord_id\": \"<string, include when msg_type in (D,F)>\",\n      \"orig_cl_ord_id\": \"<string, include when msg_type==F>\"\n    }\n  ],\n  \"final_state\": {\n    \"status\": \"<ACTIVE | RESENDING | DISCONNECTED | LOCKED_OUT>\",\n    \"next_sender_seq_num\": <int>,\n    \"next_target_seq_num\": <int>,\n    \"disconnect_time_ms\": <int or null>\n  }\n}\n\nYou have access to a Python execution tool. To run Python code before answering, emit a ```python ... ``` block; the harness will execute it in an isolated sandbox and return stdout so you can verify your state transitions before producing the final JSON.",
+  "user_prompt": "Simulate the following FIX 4.4 session trace and output the final JSON result:\n\n{\n  \"task_id\": \"T02\",\n  \"title\": \"Asynchronous Inbound Traffic & Session Liveness Timers\",\n  \"description\": \"An active FIX 4.4 session is configured with heart_bt_int_ms=30000 and test_request_grace_ms=30000. Inbound messages arrive at t=12000ms and t=41000ms interspersed with periodic clock ticks up to t=101000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"test_request_grace_ms\": 30000\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 8,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 12000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 8,\n      \"send_time_ms\": 12000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 30000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 41000,\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 9,\n      \"send_time_ms\": 41000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 60000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 71000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 101000\n    }\n  ]\n}",
+  "trials": [
+    {
+      "trial": 1,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:40:34.033513+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\ndef simulate():\n    # Let's write a small script to verify the exact behavior according to FinGate Session Shield / FIX 4.4 rules.\n    # Heartbeat interval = 30000ms. Test request grace period = 30000ms.\n    # Initial state: \n    # status = ACTIVE\n    # next_sender_seq_num = 5\n    # next_target_seq_num = 8\n    # last_sent_time_ms = 0\n    # last_recv_time_ms = 0\n    \n    # Timeline:\n    # t=12000: RECV_MSG D, seq=8.\n    #   - seq == next_target_seq_num (8 == 8). Valid.\n    #   - increment next_target_seq_num to 9.\n    #   - last_recv_time_ms = 12000.\n    \n    # t=30000: CLOCK_TICK\n    #   - Check heartbeat / test request.\n    #   - Time since last send: 30000 - 0 = 30000 >= heart_bt_int_ms (30000). Needs Heartbeat? Wait, last_sent_time_ms was 0. At t=30000, 30000 ms elapsed since last send. Send Heartbeat (MsgType=0).\n    #   - Let's trace carefully:\n    pass\n\nsimulate()\n```\n\n```python\ndef run_simulation():\n    # Let's precisely trace the events\n    # heart_bt_int_ms = 30000\n    # test_request_grace_ms = 30000\n    \n    # Initial:\n    status = \"ACTIVE\"\n    sender_seq = 5\n    target_seq = 8\n    last_sent_time = 0\n    last_recv_time = 0\n    \n    outbound = []\n    \n    events = [\n        {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 12000, \"msg_type\": \"D\", \"msg_seq_num\": 8, \"send_time_ms\": 12000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 30000},\n        {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 41000, \"msg_type\": \"0\", \"msg_seq_num\": 9, \"send_time_ms\": 41000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 60000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 71000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 101000}\n    ]\n    \n    # Let's check how heartbeat / test request timers work in FinGate Session Shield:\n    # - If time_since_last_recv >= heart_bt_int_ms + test_request_grace_ms -> disconnect or send TestRequest?\n    # Wait, let's trace standard FIX liveness timers:\n    # Sender heartbeat timer (since last send): if >= heart_bt_int_ms, send Heartbeat.\n    # Target heartbeat timer (since last recv): if >= heart_bt_int_ms, send TestRequest (MsgType=1). If no response after test_request_grace_ms, disconnect.\n    # Let's verify each event chronologically.\n    \n    current_time = 0\n    \n    # We can write a Python simulation to output the exact JSON structure.\n    import json\n    \n    # Let's simulate step by step:\n    # 1. t=12000: RECV D, seq 8.\n    #    target_seq becomes 9. last_recv = 12000.\n    \n    # 2. t=30000: CLOCK_TICK\n    #    Check send timer: last_sent = 0. Current = 30000. elapsed since last send = 30000 >= 30000.\n    #    Send Heartbeat (MsgType=0), sender_seq=5 -> 6. last_sent = 30000.\n    #    Check recv timer: last_recv = 12000 (from D at 12000). elapsed since last recv = 30000 - 12000 = 18000 < 30000. No action.\n    \n    # 3. t=41000: RECV 0, seq 9.\n    #    target_seq becomes 10. last_recv = 41000.\n    \n    # 4. t=60000: CLOCK_TICK\n    #    Check send timer: last_sent = 30000. elapsed = 60000 - 30000 = 30000 >= 30000.\n    #    Send Heartbeat (MsgType=0), sender_seq=6 -> 7. last_sent = 60000.\n    #    Check recv timer: last_recv = 41000. elapsed = 60000 - 41000 = 19000 < 30000. No action.\n    \n    # 5. t=71000: CLOCK_TICK\n    #    Check send timer: last_sent = 60000. elapsed = 71000 - 60000 = 11000 < 30000.\n    #    Check recv timer: last_recv = 41000. elapsed = 71000 - 41000 = 30000 >= 30000.\n    #    Trigger TestRequest (MsgType=1)? Wait, does FinGate send TestRequest or disconnect? Or send TestRequest at 30ms after heart_bt_int_ms?\n    #    Let's check if TestRequest is sent when time_since_last_recv >= heart_bt_int_ms (i.e. 41000 + 30000 = 71000).\n    #    At t=71000, time_since_last_recv = 30000. Send TestRequest (MsgType=1) with test_req_id=\"TEST\" (or similar), sender_seq=7 -> 8. last_sent = 71000. State becomes waiting for heartbeat/test request response (or session still ACTIVE / RESENDING?).\n    #    Wait, let's check test_request_grace_ms = 30000. If no message received by 71000 + 30000 = 101000, then disconnect!\n    #    At t=101000: CLOCK_TICK. Time since TestRequest sent (71000) or time since last recv (41000 + 30000 + 30000 = 101000) exceeds grace period. Disconnect! status = DISCONNECTED, disconnect_time_ms = 101000.\n\n    print(\"Simulation logic verified.\")\n\nrun_simulation()\n```",
+      "tool_call_python": "def simulate():\n    # Let's write a small script to verify the exact behavior according to FinGate Session Shield / FIX 4.4 rules.\n    # Heartbeat interval = 30000ms. Test request grace period = 30000ms.\n    # Initial state: \n    # status = ACTIVE\n    # next_sender_seq_num = 5\n    # next_target_seq_num = 8\n    # last_sent_time_ms = 0\n    # last_recv_time_ms = 0\n    \n    # Timeline:\n    # t=12000: RECV_MSG D, seq=8.\n    #   - seq == next_target_seq_num (8 == 8). Valid.\n    #   - increment next_target_seq_num to 9.\n    #   - last_recv_time_ms = 12000.\n    \n    # t=30000: CLOCK_TICK\n    #   - Check heartbeat / test request.\n    #   - Time since last send: 30000 - 0 = 30000 >= heart_bt_int_ms (30000). Needs Heartbeat? Wait, last_sent_time_ms was 0. At t=30000, 30000 ms elapsed since last send. Send Heartbeat (MsgType=0).\n    #   - Let's trace carefully:\n    pass\n\nsimulate()",
+      "tool_stdout": "",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 59.21,
+      "prompt_tokens": 2464,
+      "completion_tokens": 1759,
+      "total_tokens": 4223,
+      "cost_usd": 0.000712
+    },
+    {
+      "trial": 2,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:40:40.670354+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\n# Let's write a python script to simulate the FIX 4.4 session trace accurately.\n\nengine_config = {\n    \"heart_bt_int_ms\": 30000,\n    \"test_request_grace_ms\": 30000\n}\n\ninitial_store = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 8,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n}\n\nevents = [\n    {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 12000, \"msg_type\": \"D\", \"msg_seq_num\": 8, \"send_time_ms\": 12000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 30000},\n    {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 41000, \"msg_type\": \"0\", \"msg_seq_num\": 9, \"send_time_ms\": 41000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 60000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 71000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 101000}\n]\n\n# Let's trace carefully:\n# HeartBtInt = 30000ms. TestRequest grace = 30000ms.\n# Timers are usually based on:\n# - Last sent time (for sending Heartbeat if idle)\n# - Last recv time (for sending TestRequest if no inbound messages, and disconnecting if TestRequest unacknowledged)\n\n# Let's verify standard FinGate / FIX engine liveness rules:\n# 1. Idle outbound: If (now - last_sent_time) >= HeartBtInt, send Heartbeat (msg_type='0'). Update last_sent_time = now.\n# 2. Idle inbound (No Heartbeat needed if we received, but what if no inbound?): \n#    - If (now - last_recv_time) >= HeartBtInt: we should send a TestRequest (msg_type='1')? Wait, let's check standard engine behavior:\n#      Usually, Heartbeat is sent when *we* haven't sent anything for HeartBtInt.\n#      TestRequest is sent when *we* haven't received anything for HeartBtInt + TestRequestGrace (or HeartBtInt).\n#      Let's write a python simulator to test standard interpretations and check what happens.\n\nstatus = initial_store[\"status\"]\nnext_sender = initial_store[\"next_sender_seq_num\"]\nnext_target = initial_store[\"next_target_seq_num\"]\nlast_sent = initial_store[\"last_sent_time_ms\"]\nlast_recv = initial_store[\"last_recv_time_ms\"]\n\noutbound = []\ndisconnect_time = None\n\n# Let's simulate step by step and print everything.\n```\n\n```python\ndef simulate():\n    status = \"ACTIVE\"\n    next_sender_seq_num = 5\n    next_target_seq_num = 8\n    last_sent_time_ms = 0\n    last_recv_time_ms = 0 # Wait, initial_store says last_recv_time_ms = 0, but session established at t=0? Or maybe last_recv_time starts at 0.\n    \n    heart_bt_int = 30000\n    test_req_grace = 30000\n    \n    # Track pending test request state\n    test_req_sent_time = None\n    test_req_id = None\n    \n    outbound_messages = []\n    disconnect_time_ms = None\n    \n    def send_msg(t, msg_type, extra=None):\n        nonlocal next_sender_seq_num, last_sent_time_ms\n        msg = {\n            \"msg_type\": msg_type,\n            \"msg_seq_num\": next_sender_seq_num,\n            \"poss_dup_flag\": False,\n            \"send_time_ms\": t\n        }\n        if extra:\n            msg.update(extra)\n        outbound_messages.append(msg)\n        next_sender_seq_num += 1\n        last_sent_time_ms = t\n        return msg\n\n    events = [\n        {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 12000, \"msg_type\": \"D\", \"msg_seq_num\": 8, \"send_time_ms\": 12000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 30000},\n        {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 41000, \"msg_type\": \"0\", \"msg_seq_num\": 9, \"send_time_ms\": 41000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 60000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 71000},\n        {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 101000}\n    ]\n    \n    # Let's write a continuous time simulator or event-driven simulator between events.\n    # Actually, events are discrete timestamps. Let's process time up to each event.\n    \n    current_time = 0\n    \n    # Helper to check timers up to current_time\n    # In FIX engine:\n    # - If (current_time - last_sent_time_ms) >= heart_bt_int -> send Heartbeat.\n    # - If awaiting test request and (current_time - test_req_sent_time) >= test_req_grace -> disconnect.\n    # - If (current_time - last_recv_time_ms) >= (heart_bt_int + test_req_grace) and not awaiting test request -> send TestRequest.\n    \n    # Let's trace carefully.\n    pass\n\nsimulate()\n```",
+      "tool_call_python": "# Let's write a python script to simulate the FIX 4.4 session trace accurately.\n\nengine_config = {\n    \"heart_bt_int_ms\": 30000,\n    \"test_request_grace_ms\": 30000\n}\n\ninitial_store = {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 8,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n}\n\nevents = [\n    {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 12000, \"msg_type\": \"D\", \"msg_seq_num\": 8, \"send_time_ms\": 12000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 30000},\n    {\"event_type\": \"RECV_MSG\", \"timestamp_ms\": 41000, \"msg_type\": \"0\", \"msg_seq_num\": 9, \"send_time_ms\": 41000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 60000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 71000},\n    {\"event_type\": \"CLOCK_TICK\", \"timestamp_ms\": 101000}\n]\n\n# Let's trace carefully:\n# HeartBtInt = 30000ms. TestRequest grace = 30000ms.\n# Timers are usually based on:\n# - Last sent time (for sending Heartbeat if idle)\n# - Last recv time (for sending TestRequest if no inbound messages, and disconnecting if TestRequest unacknowledged)\n\n# Let's verify standard FinGate / FIX engine liveness rules:\n# 1. Idle outbound: If (now - last_sent_time) >= HeartBtInt, send Heartbeat (msg_type='0'). Update last_sent_time = now.\n# 2. Idle inbound (No Heartbeat needed if we received, but what if no inbound?): \n#    - If (now - last_recv_time) >= HeartBtInt: we should send a TestRequest (msg_type='1')? Wait, let's check standard engine behavior:\n#      Usually, Heartbeat is sent when *we* haven't sent anything for HeartBtInt.\n#      TestRequest is sent when *we* haven't received anything for HeartBtInt + TestRequestGrace (or HeartBtInt).\n#      Let's write a python simulator to test standard interpretations and check what happens.\n\nstatus = initial_store[\"status\"]\nnext_sender = initial_store[\"next_sender_seq_num\"]\nnext_target = initial_store[\"next_target_seq_num\"]\nlast_sent = initial_store[\"last_sent_time_ms\"]\nlast_recv = initial_store[\"last_recv_time_ms\"]\n\noutbound = []\ndisconnect_time = None\n\n# Let's simulate step by step and print everything.",
+      "tool_stdout": "",
+      "model_output": {},
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 6.13,
+      "prompt_tokens": 2865,
+      "completion_tokens": 1492,
+      "total_tokens": 4357,
+      "cost_usd": 0.000662
+    },
+    {
+      "trial": 3,
+      "temperature": 0.2,
+      "timestamp_utc": "2026-11-09T04:40:47.214317+00:00",
+      "model_version": "gemini-3.5-flash-lite",
+      "reasoning_trace": "```python\ndef simulate():\n    # Let's write a python script to simulate this trace accurately.\n    pass\n```\n\n```python\n# Let's run a python script to simulate the exact state transitions and messages.\nimport json\n\ntask = {\n  \"task_id\": \"T02\",\n  \"title\": \"Asynchronous Inbound Traffic & Session Liveness Timers\",\n  \"description\": \"An active FIX 4.4 session is configured with heart_bt_int_ms=30000 and test_request_grace_ms=30000. Inbound messages arrive at t=12000ms and t=41000ms interspersed with periodic clock ticks up to t=101000ms.\",\n  \"engine_config\": {\n    \"heart_bt_int_ms\": 30000,\n    \"test_request_grace_ms\": 30000\n  },\n  \"initial_store\": {\n    \"status\": \"ACTIVE\",\n    \"next_sender_seq_num\": 5,\n    \"next_target_seq_num\": 8,\n    \"last_sent_time_ms\": 0,\n    \"last_recv_time_ms\": 0,\n    \"outbound_messages_store\": []\n  },\n  \"inbound_event_trace\": [\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 12000,\n      \"msg_type\": \"D\",\n      \"msg_seq_num\": 8,\n      \"send_time_ms\": 12000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 30000\n    },\n    {\n      \"event_type\": \"RECV_MSG\",\n      \"timestamp_ms\": 41000,\n      \"msg_type\": \"0\",\n      \"msg_seq_num\": 9,\n      \"send_time_ms\": 41000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 60000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 71000\n    },\n    {\n      \"event_type\": \"CLOCK_TICK\",\n      \"timestamp_ms\": 101000\n    }\n  ]\n}\n\n# Let's trace carefully:\n# heart_bt_int_ms = 30000\n# test_request_grace_ms = 30000\n\n# Initial state:\n# status = ACTIVE\n# next_sender_seq_num = 5\n# next_target_seq_num = 8\n# last_sent_time_ms = 0\n# last_recv_time_ms = 0\n\n# Events:\n# 1. t=12000: RECV_MSG D, seq 8.\n#    - last_recv_time_ms becomes 12000.\n#    - next_target_seq_num becomes 9.\n# 2. t=30000: CLOCK_TICK\n#    - check heartbeat interval: 30000 - last_sent_time_ms (0) = 30000 >= heart_bt_int_ms (30000) -> send Heartbeat (msg_type=\"0\")? Wait, does sending idle heartbeat happen when last_sent >= heart_bt_int? Let's check standard FinGate engine logic:\n#      Usually, if (now - last_sent_time_ms) >= heart_bt_int_ms: send Heartbeat, last_sent_time_ms = now.\n#      Let's verify if heartbeat is sent at t=30000.\n#      At t=30000, last_sent_time_ms = 0. 30000 - 0 = 30000 >= 30000 -> Outbound Heartbeat!\n#      msg_seq_num = 5, next_sender_seq_num becomes 6, last_sent_time_ms = 30000.\n#      Also check inbound inactivity: now - last_recv_time_ms = 30000 - 12000 = 18000 < heart_bt_int_ms + grace (60000). So no TestRequest needed yet.\n# 3. t=41000: RECV_MSG 0, seq 9.\n#    - last_recv_time_ms = 41000.\n#    - next_target_seq_num becomes 10.\n# 4. t=60000: CLOCK_TICK\n#    - last_sent_time_ms = 30000. 60000 - 30000 = 30000 >= 30000 -> Outbound Heartbeat!\n#      msg_seq_num = 6, next_sender_seq_num becomes 7, last_sent_time_ms = 60000.\n#    - inbound inactivity: 60000 - 41000 = 19000 < 60000.\n# 5. t=71000: CLOCK_TICK\n#    - last_sent_time_ms = 60000. 71000 - 60000 = 11000 < 30000 -> no outbound heartbeat.\n#    - inbound inactivity: 71000 - 41000 = 30000 < 60000.\n# 6. t=101000: CLOCK_TICK\n#    - last_sent_time_ms = 60000. 101000 - 60000 = 41000 >= 30000 -> Outbound Heartbeat!\n#      msg_seq_num = 7, next_sender_seq_num becomes 8, last_sent_time_ms = 101000.\n#    - inbound inactivity: 101000 - 41000 = 60000 >= heart_bt_int_ms + test_request_grace_ms (30000 + 30000 = 60000)?\n#      Wait! At t=60000, inactivity was 19000. At t=71000, inactivity was 30000. At t=101000, inactivity is 101000 - 41000 = 60000.\n#      When inactivity reaches heart_bt_int_ms + test_request_grace_ms (60000), does it trigger TestRequest or disconnect?\n#      Let's check standard session shield rules:\n#      If no message received for heart_bt_int + test_request_grace, session sends TestRequest (or disconnects if TestRequest already sent).\n#      Wait, let's write a python script to test this in sandbox.\n```",
+      "tool_call_python": "def simulate():\n    # Let's write a python script to simulate this trace accurately.\n    pass",
+      "tool_stdout": "",
+      "model_output": {
+        "task_id": "T02",
+        "title": "Asynchronous Inbound Traffic & Session Liveness Timers",
+        "description": "An active FIX 4.4 session is configured with heart_bt_int_ms=30000 and test_request_grace_ms=30000. Inbound messages arrive at t=12000ms and t=41000ms interspersed with periodic clock ticks up to t=101000ms.",
+        "engine_config": {
+          "heart_bt_int_ms": 30000,
+          "test_request_grace_ms": 30000
+        },
+        "initial_store": {
+          "status": "ACTIVE",
+          "next_sender_seq_num": 5,
+          "next_target_seq_num": 8,
+          "last_sent_time_ms": 0,
+          "last_recv_time_ms": 0,
+          "outbound_messages_store": []
+        },
+        "inbound_event_trace": [
+          {
+            "event_type": "RECV_MSG",
+            "timestamp_ms": 12000,
+            "msg_type": "D",
+            "msg_seq_num": 8,
+            "send_time_ms": 12000
+          },
+          {
+            "event_type": "CLOCK_TICK",
+            "timestamp_ms": 30000
+          },
+          {
+            "event_type": "RECV_MSG",
+            "timestamp_ms": 41000,
+            "msg_type": "0",
+            "msg_seq_num": 9,
+            "send_time_ms": 41000
+          },
+          {
+            "event_type": "CLOCK_TICK",
+            "timestamp_ms": 60000
+          },
+          {
+            "event_type": "CLOCK_TICK",
+            "timestamp_ms": 71000
+          },
+          {
+            "event_type": "CLOCK_TICK",
+            "timestamp_ms": 101000
+          }
+        ]
+      },
+      "grade": {
+        "exact_pass": 0,
+        "partial_score": 0.0,
+        "sub_scores": {
+          "msg_type_sequence_score": 0.0,
+          "seq_num_and_flags_score": 0.0,
+          "final_state_score": 0.0,
+          "timing_and_reject_score": 0.0
+        },
+        "diff_reasons": [
+          "Missing required 'outbound_messages' list or 'final_state' object"
+        ]
+      },
+      "latency_sec": 6.04,
+      "prompt_tokens": 2140,
+      "completion_tokens": 1720,
+      "total_tokens": 3860,
+      "cost_usd": 0.000677
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "T02",
+  "rules_tested": [
+    "R3: Outbound Heartbeat (35=0) emission on idle send timer >= HeartBtInt",
+    "R4: Inbound silence >= HeartBtInt triggers TestRequest (35=1); silence >= HeartBtInt + Grace triggers TCP disconnect"
+  ],
+  "expert_rationale": "Outbound Heartbeats depend on time since last sent message (t=30000ms, t=60000ms), whereas TestRequest depends on time since last received message (t=41000ms + 30000ms = 71000ms), followed by disconnect at 101000ms.",
+  "outbound_messages": [
+    {
+      "msg_type": "0",
+      "send_time_ms": 30000,
+      "msg_seq_num": 5,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "0",
+      "send_time_ms": 60000,
+      "msg_seq_num": 6,
+      "poss_dup_flag": false
+    },
+    {
+      "msg_type": "1",
+      "send_time_ms": 71000,
+      "msg_seq_num": 7,
+      "poss_dup_flag": false
+    }
+  ],
+  "final_state": {
+    "status": "DISCONNECTED",
+    "next_sender_seq_num": 8,
+    "next_target_seq_num": 10,
+    "disconnect_time_ms": 101000
+  }
+}

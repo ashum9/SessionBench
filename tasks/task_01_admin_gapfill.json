@@ -1,0 +1,82 @@
+{
+  "task_id": "T01",
+  "filename": "task_01_admin_gapfill.json",
+  "ref_filename": "ref_01.json",
+  "level": 1,
+  "interacting_rules_count": 2,
+  "title": "Outbound Replay Across Mixed Session & Order History",
+  "description": "An active FIX 4.4 session with NextSenderMsgSeqNum=10 and NextTargetMsgSeqNum=3 holds outbound history for sequence numbers 1 through 9. At t=2000ms, an inbound ResendRequest (35=2) arrives requesting sequence range 4 through 9.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 10,
+    "next_target_seq_num": 3,
+    "last_sent_time_ms": 1800,
+    "last_recv_time_ms": 1500,
+    "outbound_messages_store": [
+      {
+        "msg_seq_num": 1,
+        "msg_type": "A",
+        "send_time_ms": 100
+      },
+      {
+        "msg_seq_num": 2,
+        "msg_type": "0",
+        "send_time_ms": 500
+      },
+      {
+        "msg_seq_num": 3,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-1",
+        "send_time_ms": 800
+      },
+      {
+        "msg_seq_num": 4,
+        "msg_type": "0",
+        "send_time_ms": 1000
+      },
+      {
+        "msg_seq_num": 5,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-2",
+        "send_time_ms": 1200
+      },
+      {
+        "msg_seq_num": 6,
+        "msg_type": "1",
+        "send_time_ms": 1400
+      },
+      {
+        "msg_seq_num": 7,
+        "msg_type": "0",
+        "send_time_ms": 1600
+      },
+      {
+        "msg_seq_num": 8,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-3",
+        "send_time_ms": 1700
+      },
+      {
+        "msg_seq_num": 9,
+        "msg_type": "D",
+        "cl_ord_id": "ORD-4",
+        "send_time_ms": 1800
+      }
+    ]
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2000,
+      "msg_type": "2",
+      "msg_seq_num": 3,
+      "begin_seq_no": 4,
+      "end_seq_no": 9,
+      "send_time_ms": 2000
+    }
+  ]
+}

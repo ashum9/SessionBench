@@ -1,0 +1,53 @@
+{
+  "task_id": "T01",
+  "rules_tested": [
+    "R1: Admin vs. Application Message Classification during Resend",
+    "R2: Contiguous Admin Message Coalescing into SequenceReset-GapFill (35=4, 123=Y, 36=last_admin+1)"
+  ],
+  "expert_rationale": "Stored messages 4..9 contain admin messages at 4 (35=0), 6 (35=1), and 7 (35=0), and application orders (35=D) at 5, 8, and 9. Admin messages must never be resent verbatim; contiguous admin messages 6 and 7 must coalesce into a single SequenceReset-GapFill (35=4, 123=Y, 34=6, 36=8).",
+  "outbound_messages": [
+    {
+      "msg_type": "4",
+      "msg_seq_num": 4,
+      "poss_dup_flag": true,
+      "gap_fill_flag": true,
+      "new_seq_no": 5,
+      "send_time_ms": 2000
+    },
+    {
+      "msg_type": "D",
+      "msg_seq_num": 5,
+      "poss_dup_flag": true,
+      "send_time_ms": 2000,
+      "cl_ord_id": "ORD-2"
+    },
+    {
+      "msg_type": "4",
+      "msg_seq_num": 6,
+      "poss_dup_flag": true,
+      "gap_fill_flag": true,
+      "new_seq_no": 8,
+      "send_time_ms": 2000
+    },
+    {
+      "msg_type": "D",
+      "msg_seq_num": 8,
+      "poss_dup_flag": true,
+      "send_time_ms": 2000,
+      "cl_ord_id": "ORD-3"
+    },
+    {
+      "msg_type": "D",
+      "msg_seq_num": 9,
+      "poss_dup_flag": true,
+      "send_time_ms": 2000,
+      "cl_ord_id": "ORD-4"
+    }
+  ],
+  "final_state": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 10,
+    "next_target_seq_num": 4,
+    "disconnect_time_ms": null
+  }
+}

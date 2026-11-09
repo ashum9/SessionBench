@@ -1,0 +1,52 @@
+{
+  "task_id": "T08",
+  "filename": "task_08_out_of_order_gapfill.json",
+  "ref_filename": "ref_08.json",
+  "level": 3,
+  "interacting_rules_count": 4,
+  "title": "Non-Contiguous SequenceReset Reception & Replay Stream",
+  "description": "An active session at NextSenderMsgSeqNum=5 and NextTargetMsgSeqNum=10 receives an inbound SequenceReset (35=4, gap_fill_flag=True, MsgSeqNum=12, NewSeqNo=16) at t=1000ms, followed by inbound NewOrderSingle messages with MsgSeqNum=10 at t=2000ms and MsgSeqNum=11 at t=2500ms.",
+  "engine_config": {
+    "heart_bt_int_ms": 30000,
+    "send_redundant_resend_requests": false
+  },
+  "initial_store": {
+    "status": "ACTIVE",
+    "next_sender_seq_num": 5,
+    "next_target_seq_num": 10,
+    "last_sent_time_ms": 500,
+    "last_recv_time_ms": 500,
+    "outbound_messages_store": []
+  },
+  "inbound_event_trace": [
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 1000,
+      "msg_type": "4",
+      "msg_seq_num": 12,
+      "gap_fill_flag": true,
+      "new_seq_no": 16,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 800,
+      "send_time_ms": 1000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2000,
+      "msg_type": "D",
+      "msg_seq_num": 10,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 600,
+      "send_time_ms": 2000
+    },
+    {
+      "event_type": "RECV_MSG",
+      "timestamp_ms": 2500,
+      "msg_type": "D",
+      "msg_seq_num": 11,
+      "poss_dup_flag": true,
+      "orig_sending_time_ms": 700,
+      "send_time_ms": 2500
+    }
+  ]
+}

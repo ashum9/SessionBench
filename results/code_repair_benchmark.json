@@ -1,0 +1,27 @@
+{
+  "seed_range": "1000..1099",
+  "total_scenarios_per_engine": 110,
+  "elapsed_sec": 0.02,
+  "results": [
+    {
+      "engine_name": "Unpatched CandidateFIXEngine (code_repair/broken_engine.py)",
+      "canonical_10_pass_rate": 20.0,
+      "canonical_10_passed": "2/10",
+      "procedural_chaos_pass_rate": 2.0,
+      "procedural_chaos_passed": "2/100",
+      "overall_pass_rate": 3.6,
+      "mean_partial_score": 35.4,
+      "fingate_invariant_violations": 179
+    },
+    {
+      "engine_name": "Patched Reference Engine (oracle/fix44_spec_rules.py)",
+      "canonical_10_pass_rate": 100.0,
+      "canonical_10_passed": "10/10",
+      "procedural_chaos_pass_rate": 100.0,
+      "procedural_chaos_passed": "100/100",
+      "overall_pass_rate": 100.0,
+      "mean_partial_score": 100.0,
+      "fingate_invariant_violations": 0
+    }
+  ]
+}
